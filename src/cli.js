@@ -1,0 +1,92 @@
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { createHttp, createFixtureHttp } from './http.js';
+import { createClaudeAnalyzer, createMockAnalyzer } from './analyze.js';
+import { createResendMailer, createFileMailer } from './mail.js';
+import { createStore } from './store/index.js';
+import { runScan } from './pipeline.js';
+import { buildSources } from './sources/index.js';
+
+const args = process.argv.slice(2);
+const cmd = args[0] ?? 'scan';
+const flag = (name) => args.includes(`--${name}`);
+const opt = (name) => args.find((a) => a.startsWith(`--${name}=`))?.split('=').slice(1).join('=');
+const log = (...m) => console.log(...m);
+
+export async function loadConfig(file = process.env.CONFIG_FILE || 'config/default.json') {
+  return JSON.parse(await readFile(file, 'utf8'));
+}
+
+async function scan() {
+  const cfg = await loadConfig();
+  const dryRun = flag('dry-run');
+  const fixturesDir = opt('fixtures');
+  const http = fixturesDir
+    ? createFixtureHttp(JSON.parse(await readFile(path.join(fixturesDir, 'manifest.json'), 'utf8')), fixturesDir)
+    : createHttp();
+  const realHttp = createHttp();
+
+  const mockAi = flag('mock-ai');
+  const analyzer = mockAi ? createMockAnalyzer() : createClaudeAnalyzer({ apiKey: process.env.ANTHROPIC_API_KEY, http: realHttp });
+  const mailer = dryRun
+    ? createFileMailer(opt('out') || 'out')
+    : createResendMailer({ apiKey: process.env.RESEND_API_KEY, from: process.env.REPORT_FROM, to: process.env.REPORT_TO, http: realHttp });
+  const store = createStore({ dryRun, http: realHttp });
+
+  const result = await runScan({
+    cfg, http, store, analyzer, mailer,
+    now: opt('now') ? new Date(opt('now')) : new Date(),
+    force: flag('force'),
+    appUrl: process.env.APP_URL || '',
+    log,
+  });
+
+  if (!result.skipped) {
+    const bad = result.health.filter((h) => !h.ok);
+    log(`Gotowe: ${result.changes.length} zmian, ${bad.length} źródeł z błędem.`);
+    if (dryRun) log(`Raport zapisany w ${opt('out') || 'out'}/report.html`);
+    // Gdy WSZYSTKIE źródła zawiodły, kończymy błędem, żeby GitHub pokazał czerwony przebieg.
+    if (bad.length === result.health.length) process.exitCode = 1;
+  }
+}
+
+/** Sprawdza konfigurację i dostępność źródeł. Warto uruchomić raz przed pierwszym skanem. */
+async function verify() {
+  const cfg = await loadConfig();
+  const http = createHttp();
+  const env = (k) => (process.env[k] ? 'ustawiona' : 'BRAK');
+  log('Zmienne środowiskowe:');
+  for (const k of ['ANTHROPIC_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'RESEND_API_KEY', 'REPORT_FROM', 'REPORT_TO']) log(`  ${k}: ${env(k)}`);
+
+  log('\nAkty obserwowane (sprawdź, czy tytuły się zgadzają):');
+  for (const w of cfg.watchedActs) {
+    try {
+      const [pub, year, pos] = w.eli.split('/');
+      const d = await http.json(`https://api.sejm.gov.pl/eli/acts/${pub}/${year}/${pos}`);
+      log(`  OK   ${w.eli}: ${d.title}`);
+    } catch (e) {
+      log(`  BŁĄD ${w.eli} (${w.name}): ${e.message}`);
+    }
+  }
+
+  log('\nŹródła (lista nowych pozycji z ostatnich dni):');
+  const today = new Date().toISOString().slice(0, 10);
+  for (const s of buildSources(cfg)) {
+    try {
+      const items = await s.listNew({ http, today, lookbackDays: cfg.schedule.lookbackDays, cfg });
+      log(`  OK   ${s.name}: ${items.length} pozycji`);
+    } catch (e) {
+      log(`  BŁĄD ${s.name}: ${e.message}`);
+    }
+  }
+}
+
+const commands = { scan, verify };
+if (!commands[cmd]) {
+  log('Użycie: node src/cli.js <scan|verify> [--dry-run] [--force] [--fixtures=katalog] [--now=ISO] [--mock-ai]');
+  process.exit(2);
+}
+commands[cmd]().catch((e) => {
+  console.error(`Błąd krytyczny: ${e.message}`);
+  process.exit(1);
+});

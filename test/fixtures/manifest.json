@@ -1,0 +1,44 @@
+{
+ "https://api.sejm.gov.pl/eli/acts/DU/2026": {
+  "file": "eli-du-2026-list.json"
+ },
+ "https://api.sejm.gov.pl/eli/acts/DU/2025": {
+  "file": "eli-mp-2026-list.json"
+ },
+ "https://api.sejm.gov.pl/eli/acts/MP/2026": {
+  "file": "eli-mp-2026-list.json"
+ },
+ "https://api.sejm.gov.pl/eli/acts/DU/2026/1900": {
+  "file": "eli-du-1900.json"
+ },
+ "https://api.sejm.gov.pl/eli/acts/DU/2026/1901": {
+  "file": "eli-du-1901.json"
+ },
+ "https://api.sejm.gov.pl/eli/acts/DU/2026/1905": {
+  "file": "eli-du-1905.json"
+ },
+ "https://api.sejm.gov.pl/eli/acts/DU/2026/1950": {
+  "file": "eli-du-1950.json"
+ },
+ "https://api.sejm.gov.pl/eli/acts/DU/2026/1900/text.html": {
+  "file": "eli-du-1900.html"
+ },
+ "https://api.sejm.gov.pl/eli/acts/DU/2026/1901/text.html": {
+  "file": "eli-du-1901.html"
+ },
+ "https://api.sejm.gov.pl/eli/acts/DU/2026/1950/text.html": {
+  "file": "eli-du-1950.html"
+ },
+ "https://rss.mtsz.pl/min-edukacja-komunikaty.xml": {
+  "file": "men.xml"
+ },
+ "https://rss.mtsz.pl/min-edukacja-wiadomosci.xml": {
+  "error": "HTTP 503 (symulowana awaria \u017ar\u00f3d\u0142a)"
+ },
+ "https://example.test/men/projekt-oceniania": {
+  "file": "men-page.html"
+ },
+ "https://example.test/men/spotkanie": {
+  "file": "men-page.html"
+ }
+}

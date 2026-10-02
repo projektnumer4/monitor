@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel><title>MEN (dane testowe)</title>
+<item><title>Projekt rozporządzenia w sprawie oceniania uczniów szkół specjalnych w konsultacjach (dane testowe)</title><link>https://example.test/men/projekt-oceniania</link><guid>men-1</guid><pubDate>Thu, 01 Oct 2026 08:00:00 +0200</pubDate><description>&lt;p&gt;Ministerstwo opublikowało projekt zmian w ocenianiu uczniów.&lt;/p&gt;</description></item>
+<item><title>Spotkanie z przedstawicielami branży motoryzacyjnej (dane testowe)</title><link>https://example.test/men/spotkanie</link><guid>men-2</guid><pubDate>Wed, 30 Sep 2026 10:00:00 +0200</pubDate><description>Relacja ze spotkania.</description></item>
+<item><title>Stary komunikat o szkołach (dane testowe)</title><link>https://example.test/men/stary</link><guid>men-0</guid><pubDate>Mon, 01 Jun 2026 10:00:00 +0200</pubDate><description>Archiwum.</description></item>
+</channel></rss>

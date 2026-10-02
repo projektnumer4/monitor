@@ -1,0 +1,37 @@
+{
+ "ELI": "DU/2026/1905",
+ "address": "WDU20260001905",
+ "announcementDate": "2026-09-30",
+ "displayAddress": "Dz.U. 2026 poz. 1905",
+ "pos": 1905,
+ "promulgation": "2026-09-30",
+ "publisher": "DU",
+ "status": "obowiązujący",
+ "textHTML": false,
+ "textPDF": true,
+ "title": "Ustawa z dnia 20 września 2026 r. o zmianie niektórych ustaw w związku z reformą administracji (dane testowe)",
+ "type": "Ustawa",
+ "volume": 0,
+ "year": 2026,
+ "entryIntoForce": "2027-01-01",
+ "inForce": "IN_FORCE",
+ "keywords": [
+  "administracja"
+ ],
+ "keywordsNames": [],
+ "references": {
+  "Akty zmienione": [
+   {
+    "id": "DU/2017/59",
+    "date": "2027-01-01"
+   },
+   {
+    "id": "DU/2001/1"
+   }
+  ]
+ },
+ "releasedBy": [
+  "SEJM"
+ ],
+ "texts": []
+}
