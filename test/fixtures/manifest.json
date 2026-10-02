@@ -40,5 +40,50 @@
  },
  "https://example.test/men/spotkanie": {
   "file": "men-page.html"
+ },
+ "https://api.sejm.gov.pl/sejm/term10/prints": {
+  "file": "sejm-prints.json"
+ },
+ "https://api.sejm.gov.pl/sejm/term10/prints/1234/1234.pdf": {
+  "file": "sejm-1234.pdf"
+ },
+ "https://edziennik.mazowieckie.pl/api/eli/acts/POL_WOJ_MZ/2026": {
+  "file": "regional-mz-2026.json"
+ },
+ "https://edziennik.mazowieckie.pl/eli/POL_WOJ_MZ/2026/9001/ogl/pol/pdf": {
+  "file": "regional-9001.pdf"
+ },
+ "https://www.kuratorium.waw.pl/dokumenty/rss/1-rss-o-3.rss": {
+  "file": "kuratorium-komunikaty.xml"
+ },
+ "https://www.kuratorium.waw.pl/dokumenty/rss/1-rss-427.rss": {
+  "file": "kuratorium-na-skroty.xml"
+ },
+ "https://example.test/kuratorium/nadzor": {
+  "file": "kuratorium-page.html"
+ },
+ "https://legislacja.rcl.gov.pl/lista?title=Edukacji": {
+  "file": "rcl-list.html"
+ },
+ "https://legislacja.rcl.gov.pl/lista?title=o%C5%9Bwiat": {
+  "file": "rcl-list.html"
+ },
+ "https://legislacja.rcl.gov.pl/lista?title=szko%C5%82": {
+  "file": "rcl-list.html"
+ },
+ "https://legislacja.rcl.gov.pl/lista?title=nauczyciel": {
+  "file": "rcl-list.html"
+ },
+ "https://legislacja.rcl.gov.pl/lista?title=uczni": {
+  "file": "rcl-list.html"
+ },
+ "https://legislacja.rcl.gov.pl/projekt/12390001": {
+  "file": "rcl-project.html"
+ },
+ "https://bip.test/uchwaly": {
+  "file": "bip-page.html"
+ },
+ "https://bip.test/uchwala/1": {
+  "file": "kuratorium-page.html"
  }
 }

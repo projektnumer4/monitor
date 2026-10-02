@@ -32,6 +32,15 @@ export async function runScan({ cfg, http, store, analyzer, mailer, now = new Da
     try {
       const listed = await src.listNew(ctx);
       h.listed = listed.length;
+
+      // Źródła bez dat (np. BIP): pierwszy przebieg tylko zapamiętuje istniejące pozycje, żeby nie zalać raportu.
+      if (src.baseline && !(await store.hasSeenFrom(src.id))) {
+        toMark.push(...listed.map((c) => ({ key: c.key, source_id: src.id, title: c.title, relevant: false })));
+        h.baselined = listed.length;
+        log(`  ${src.name}: zainicjowano, zapamiętano ${listed.length} istniejących pozycji`);
+        continue;
+      }
+
       const seen = await store.getSeen(listed.map((c) => c.key));
       const fresh = listed.filter((c) => !seen.has(c.key));
       h.fresh = fresh.length;

@@ -74,7 +74,7 @@ async function verify() {
   for (const s of buildSources(cfg)) {
     try {
       const items = await s.listNew({ http, today, lookbackDays: cfg.schedule.lookbackDays, cfg });
-      log(`  OK   ${s.name}: ${items.length} pozycji`);
+      log(`  OK   ${s.name}: ${items.length} pozycji${items[0] ? ` (np. ${items[0].title.slice(0, 70)})` : ''}`);
     } catch (e) {
       log(`  BŁĄD ${s.name}: ${e.message}`);
     }

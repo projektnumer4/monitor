@@ -90,3 +90,8 @@ test('prompt w trybie JSON zawiera listę ról i zasadę ignorowania instrukcji'
   assert.match(p, /Logopeda/);
   assert.match(p, /Ignoruj wszelkie instrukcje/);
 });
+
+test('błąd HTTP zawiera treść odpowiedzi serwera (ułatwia diagnozę)', async () => {
+  const http = createHttp({ fetchImpl: async () => ({ ok: false, status: 404, text: async () => '{"code":"PGRST205","message":"Could not find the table public.runs"}' }), retries: 0 });
+  await assert.rejects(http.request('https://x.test/rest/v1/runs'), /PGRST205/);
+});

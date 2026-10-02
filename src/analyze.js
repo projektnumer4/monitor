@@ -71,6 +71,13 @@ ZASADY:
 ${mode === 'json' ? JSON_INSTRUCTION : 'Odpowiedz wywołując narzędzie report_analysis.'}`;
 }
 
+const KIND_LABEL = {
+  bill: 'druk sejmowy (projekt ustawy lub uchwały, jeszcze nieuchwalony)',
+  draft: 'projekt aktu na etapie rządowym (RCL), jeszcze nieprzyjęty',
+  local: 'akt prawa miejscowego z dziennika urzędowego województwa',
+  news: 'komunikat, wiadomość lub pozycja z listy na stronie',
+};
+
 function buildUserContent(c, t, today) {
   const meta = [
     `Dzisiejsza data: ${today}`,
@@ -78,6 +85,7 @@ function buildUserContent(c, t, today) {
     `Tytuł: ${c.title}`,
     c.display ? `Oznaczenie: ${c.display}` : null,
     c.type ? `Rodzaj aktu: ${c.type}` : null,
+    KIND_LABEL[c.kind] ? `Rodzaj pozycji: ${KIND_LABEL[c.kind]}` : null,
     c.issuer ? `Organ wydający: ${c.issuer}` : null,
     c.publishedAt ? `Data publikacji: ${c.publishedAt}` : null,
     c.effectiveDate ? `Data wejścia w życie (z metadanych): ${c.effectiveDate}` : 'Data wejścia w życie: brak w metadanych',
@@ -195,7 +203,7 @@ export function createMockAnalyzer() {
         roles.push({ role: 'Sekretarz', action: 'Zaktualizować deklarację dostępności.', deadline: null });
       }
       if (c.changedActs?.length) roles.push({ role: 'Dyrektor', action: 'Zapoznać się ze zmianami w ustawie i ocenić skutki dla szkoły.', deadline: null });
-      const isDraft = /projekt/.test(t);
+      const isDraft = /projekt/.test(t) || c.kind === 'bill' || c.kind === 'draft';
       return normalizeAnalysis({
         relevant: score.score >= 2,
         relevance_reason: 'TRYB PRÓBNY: ocena na podstawie słów kluczowych, bez analizy AI.',
@@ -292,7 +300,7 @@ export function createRulesAnalyzer() {
         }
       }
       const strong = score.reasons.some((r) => r.startsWith('organ wydający') || r.startsWith('zmienia:'));
-      const status = c.kind === 'news' ? (/projekt/.test(title) ? 'projekt' : 'informacja') : c.type === 'Obwieszczenie' ? 'informacja' : 'obowiazuje';
+      const status = c.kind === 'bill' || c.kind === 'draft' ? 'projekt' : c.kind === 'local' ? 'obowiazuje' : c.kind === 'news' ? (/projekt/.test(title) ? 'projekt' : 'informacja') : c.type === 'Obwieszczenie' ? 'informacja' : 'obowiazuje';
       const lead = [c.display ?? c.sourceName, c.title].filter(Boolean).join(': ');
       return normalizeAnalysis({
         relevant: true,

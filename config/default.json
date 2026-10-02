@@ -28,18 +28,81 @@
       "enabled": true
     },
     {
+      "id": "sejm-druki",
+      "type": "sejm-prints",
+      "term": 10,
+      "name": "Sejm: druki (projekty ustaw)",
+      "enabled": true
+    },
+    {
+      "id": "rcl",
+      "type": "rcl",
+      "name": "RCL: projekty rozporządzeń i ustaw",
+      "urlTemplate": "https://legislacja.rcl.gov.pl/lista?title={q}",
+      "queries": [
+        "Edukacji",
+        "oświat",
+        "szkoł",
+        "nauczyciel",
+        "uczni"
+      ],
+      "enabled": true
+    },
+    {
+      "id": "dz-urz-mazowieckie",
+      "type": "eli-regional",
+      "name": "Dziennik Urzędowy Woj. Mazowieckiego",
+      "baseUrl": "https://edziennik.mazowieckie.pl/api/eli/acts",
+      "publisher": "POL_WOJ_MZ",
+      "viewBaseUrl": "https://edziennik.mazowieckie.pl/eli",
+      "scope": [
+        "ostrołęk",
+        "ostrołęc",
+        "wojewody mazowieckiego",
+        "sejmiku województwa mazowieckiego",
+        "kuratora oświaty"
+      ],
+      "enabled": true
+    },
+    {
+      "id": "kuratorium-komunikaty",
+      "type": "rss",
+      "name": "Kuratorium Oświaty: komunikaty",
+      "url": "https://www.kuratorium.waw.pl/dokumenty/rss/1-rss-o-3.rss",
+      "enabled": true
+    },
+    {
+      "id": "kuratorium-na-skroty",
+      "type": "rss",
+      "name": "Kuratorium Oświaty: na skróty",
+      "url": "https://www.kuratorium.waw.pl/dokumenty/rss/1-rss-427.rss",
+      "enabled": true
+    },
+    {
       "id": "men-komunikaty",
       "type": "rss",
-      "name": "MEN: komunikaty",
+      "name": "MEN: komunikaty (kanał zewnętrzny)",
       "url": "https://rss.mtsz.pl/min-edukacja-komunikaty.xml",
       "enabled": true
     },
     {
       "id": "men-wiadomosci",
       "type": "rss",
-      "name": "MEN: wiadomości",
+      "name": "MEN: wiadomości (kanał zewnętrzny)",
       "url": "https://rss.mtsz.pl/min-edukacja-wiadomosci.xml",
       "enabled": true
+    },
+    {
+      "id": "bip-organ-prowadzacy",
+      "type": "links",
+      "name": "BIP organu prowadzącego: uchwały i zarządzenia",
+      "url": "",
+      "include": "uchwa|zarządz|statut|oświat|szkoł",
+      "exclude": "",
+      "minTitleLength": 15,
+      "maxItems": 80,
+      "enabled": false,
+      "note": "Wklej adres strony z listą uchwał lub zarządzeń organu prowadzącego i ustaw enabled na true"
     }
   ],
   "filter": {
@@ -49,14 +112,18 @@
     "education": [
       "oświat",
       "szkoł",
+      "szkół",
+      "szkolnictw",
       "nauczyciel",
       "uczni",
       "przedszkol",
       "wychowa",
       "placówk",
+      "placówek",
       "pedagog",
       "rewalidac",
       "orzeczeni",
+      "orzeczeń",
       "internat",
       "kształcenia specjaln",
       "karta nauczyciela",
@@ -68,9 +135,9 @@
       "praktyczn",
       "zawodow",
       "egzamin",
-      "ocenianie",
+      "ocenian",
       "klasyfikowani",
-      "dostępność",
+      "dostępnoś",
       "indywidualn",
       "dzieci",
       "młodzież"

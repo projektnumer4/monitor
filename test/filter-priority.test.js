@@ -46,3 +46,14 @@ test('priorytet: zmiana poziomu reguły w konfiguracji zmienia wynik', () => {
 test('priorytet: akt już obowiązujący, wpływający na szkołę, jest wysoki (termin minął)', () => {
   assert.equal(prio({ effective_date: '2026-09-30' }).priority, 'hi');
 });
+
+test('filtr: odmiana polska (szkół, placówek, orzeczeń, dostępności) jest rozpoznawana', () => {
+  for (const title of [
+    'Uchwała w sprawie sieci szkół specjalnych i placówek',
+    'Zarządzenie w sprawie wykazu placówek',
+    'Rozporządzenie w sprawie wydawania orzeczeń',
+  ]) {
+    assert.ok(scoreCandidate({ title }, cfg).score >= cfg.filter.minScore, title);
+  }
+  assert.ok(scoreCandidate({ title: 'Komunikat o dostępności stron' }, cfg).score >= 1);
+});

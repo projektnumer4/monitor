@@ -18,6 +18,7 @@ export function createFileStore(file = '.data/state.json') {
     async hasRun(date) { return (await load()).runs[date]?.status === 'ok'; },
     async recordRun(date, summary) { (await load()).runs[date] = { status: 'ok', summary }; await save(); },
     async getSeen(keys) { const s = await load(); return new Set(keys.filter((k) => s.seen[k])); },
+    async hasSeenFrom(sourceId) { return Object.values((await load()).seen).some((r) => r.source_id === sourceId); },
     async markSeen(rows) { const s = await load(); rows.forEach((r) => { s.seen[r.key] = r; }); await save(); },
     async saveChange(c) { (await load()).changes[c.key] = c; await save(); },
     async listByRunDate(date) { return Object.values((await load()).changes).filter((c) => c.run_date === date); },

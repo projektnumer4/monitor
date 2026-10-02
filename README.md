@@ -9,16 +9,33 @@ GitHub Actions (cron) -> źródła -> filtr słów kluczowych -> analiza AI -> r
                       -> zapis w Supabase -> raport e-mail (Resend)
 ```
 
-## Źródła w tej wersji
+## Źródła
 
-| Źródło | Jak | Uwagi |
-|---|---|---|
-| Dziennik Ustaw | API ELI Sejmu (`api.sejm.gov.pl/eli`) | oficjalne, dokumentacja publiczna |
-| Monitor Polski | to samo API | |
-| MEN: komunikaty i wiadomości | kanał RSS | adresy wskazują kanały utrzymywane przez **zewnętrzny serwis** (`rss.mtsz.pl`), nie przez MEN. Jeśli przestaną działać, zamień URL w `config/default.json` |
+| Źródło | Co daje | Jak | Wiarygodność |
+|---|---|---|---|
+| Dziennik Ustaw, Monitor Polski | obowiązujące akty ogólnopolskie | oficjalne API ELI Sejmu | oficjalne API |
+| Sejm: druki | projekty ustaw (wczesny sygnał) | oficjalne API Sejmu | oficjalne API |
+| RCL | projekty rozporządzeń i ustaw na etapie rządowym (najwcześniejszy sygnał) | czytanie stron HTML (brak API) | **eksperymentalne**: przy zmianie układu strony źródło zgłosi błąd w raporcie |
+| Dziennik Urzędowy Woj. Mazowieckiego | uchwały organu prowadzącego, akty wojewody i sejmiku | API dziennika zgodne z ELI, zawężone do `scope` | oficjalne API, **struktura odpowiedzi niezweryfikowana na żywo** |
+| Kuratorium Oświaty (komunikaty, na skróty) | komunikaty i wytyczne kuratora | oficjalne kanały RSS kuratorium | kanały podane na stronie kuratorium |
+| MEN (komunikaty, wiadomości) | komunikaty ministerstwa | kanały RSS **zewnętrznego serwisu** `rss.mtsz.pl` | nieoficjalne |
+| BIP organu prowadzącego | uchwały i zarządzenia | lista linków ze strony (wyłączone, wymaga Twojego adresu) | zależy od układu strony |
 
 Ustawa zmieniająca „niektóre inne ustawy” często nie ma w tytule nic o oświacie. Dlatego silnik sprawdza też,
 czy akt **zmienia któryś z aktów obserwowanych** (`watchedActs`: Prawo oświatowe, Karta Nauczyciela itd.).
+Dotyczy to Dziennika Ustaw. Druki sejmowe i projekty RCL są oceniane po tytule, więc ogólny tytuł może je ukryć.
+
+### Zakres lokalny (organ prowadzący)
+W `config/default.json`, w źródle `dz-urz-mazowieckie`, pole `scope` zawiera terminy, które muszą wystąpić w tytule aktu
+(domyślnie: `ostrołęk`, `ostrołęc`, wojewoda mazowiecki, sejmik, kurator oświaty). **Ustal, kto jest organem prowadzącym SOSW**
+(miasto czy powiat) i dopasuj `scope`. Dziennik zawiera uchwały wszystkich gmin województwa, więc bez zawężenia raport byłby zalany.
+
+### Włączenie BIP organu prowadzącego
+1. Otwórz w przeglądarce stronę z listą uchwał lub zarządzeń organu prowadzącego i skopiuj jej adres.
+2. W `config/default.json`, w źródle `bip-organ-prowadzacy`, wpisz go w `url` i ustaw `"enabled": true`.
+3. Przy pierwszym skanie silnik tylko zapamięta istniejące linki (raport napisze, że źródło zainicjowano).
+   Nowe uchwały i zarządzenia zostaną zgłoszone od kolejnego skanu.
+4. Pole `include` to wyrażenie regularne zawężające linki (domyślnie uchwały, zarządzenia, statut, oświata, szkoły).
 
 ## Uruchomienie krok po kroku
 
@@ -85,7 +102,7 @@ Zadania GitHuba mogą się opóźniać, co w oknie kilku godzin nie ma znaczenia
 
 ## Co jest sprawdzone, a co nie
 
-Sprawdzone testami (`npm test`, 42 testy): straż czasu w lecie i zimie, filtr, reguły priorytetów, parsowanie ELI i RSS,
+Sprawdzone testami (`npm test`, 53 testy): straż czasu w lecie i zimie, filtr, reguły priorytetów, parsowanie ELI i RSS,
 odporność na awarię źródła, idempotencja (dwa uruchomienia w tym samym dniu), ponowienie po nieudanej wysyłce,
 kształt żądania do API Claude, escapowanie treści w e-mailu.
 
@@ -100,4 +117,4 @@ kształt żądania do API Claude, escapowanie treści w e-mailu.
 - Ustawa o bardzo długim tekście jest obcinana do ok. 70 tys. znaków (raport zaznacza to w „Do sprawdzenia”).
 - Akty bez słów kluczowych w tytule i bez odwołania do aktów obserwowanych mogą zostać pominięte.
   Rozszerzaj `keywords` i `watchedActs`, gdy zauważysz lukę.
-- Nie ma jeszcze: RCL (projekty), Kuratorium, BIP organu prowadzącego, generowania szkiców dokumentów, panelu i linków.
+- Nie ma jeszcze: generowania szkiców dokumentów, panelu i linków dla pracowników.

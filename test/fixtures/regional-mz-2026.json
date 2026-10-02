@@ -1,0 +1,33 @@
+{
+ "count": 3,
+ "totalCount": 3,
+ "items": [
+  {
+   "ELI": "POL_WOJ_MZ/2026/9001",
+   "pos": 9001,
+   "year": 2026,
+   "publisher": "POL_WOJ_MZ",
+   "promulgation": "2026-10-01",
+   "title": "Uchwała nr XL/200/2026 Rady Miasta Ostrołęki z dnia 25 września 2026 r. w sprawie zmiany statutu Specjalnego Ośrodka Szkolno-Wychowawczego w Ostrołęce (dane testowe)",
+   "type": "uchwała"
+  },
+  {
+   "ELI": "POL_WOJ_MZ/2026/9002",
+   "pos": 9002,
+   "year": 2026,
+   "publisher": "POL_WOJ_MZ",
+   "promulgation": "2026-10-01",
+   "title": "Uchwała nr XLI/10/2026 Rady Gminy Sadowne z dnia 26 września 2026 r. w sprawie zasad udzielania zniżek godzin nauczycieli (dane testowe)",
+   "type": "uchwała"
+  },
+  {
+   "ELI": "POL_WOJ_MZ/2026/9003",
+   "pos": 9003,
+   "year": 2026,
+   "publisher": "POL_WOJ_MZ",
+   "promulgation": "2026-10-01",
+   "title": "Uchwała nr XL/201/2026 Rady Miasta Ostrołęki z dnia 25 września 2026 r. w sprawie budżetu miasta (dane testowe)",
+   "type": "uchwała"
+  }
+ ]
+}

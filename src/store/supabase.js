@@ -35,6 +35,10 @@ export function createSupabaseStore({ url, serviceKey, http }) {
       }
       return found;
     },
+    async hasSeenFrom(sourceId) {
+      const rows = await get('seen_items', `source_id=eq.${encodeURIComponent(sourceId)}&select=key&limit=1`);
+      return rows.length > 0;
+    },
     async markSeen(rows) {
       await upsert('seen_items', rows.map((r) => ({ key: r.key, source_id: r.source_id, title: r.title, relevant: r.relevant })), 'key');
     },
