@@ -2,7 +2,10 @@
 export function createSupabaseStore({ url, serviceKey, http }) {
   if (!url || !serviceKey) throw new Error('Brak SUPABASE_URL lub SUPABASE_SERVICE_ROLE_KEY');
   const base = `${url.replace(/\/$/, '')}/rest/v1`;
-  const headers = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'content-type': 'application/json' };
+  // Nowe klucze Supabase (sb_secret_...) nie są tokenami JWT i idą tylko w nagłówku apikey.
+  // Starszy klucz service_role (zaczyna się od eyJ...) wymaga też nagłówka Authorization.
+  const headers = { apikey: serviceKey, 'content-type': 'application/json' };
+  if (!serviceKey.startsWith('sb_')) headers.Authorization = `Bearer ${serviceKey}`;
 
   const get = async (table, query) => (await http.request(`${base}/${table}?${query}`, { headers })).json();
   const upsert = async (table, rows, onConflict) => {
