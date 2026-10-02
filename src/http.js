@@ -17,7 +17,12 @@ export function createHttp({ fetchImpl = globalThis.fetch, retries = 3, timeoutM
           await sleep(1000 * 2 ** i);
           continue;
         }
-        if (!res.ok) throw Object.assign(new Error(`HTTP ${res.status} dla ${url}`), { status: res.status, fatal: true });
+        if (!res.ok) {
+          // Treść odpowiedzi (np. komunikat Supabase lub API) mówi, co dokładnie poszło nie tak.
+          let detail = '';
+          try { detail = (await res.text()).replace(/\s+/g, ' ').slice(0, 300); } catch { /* brak treści */ }
+          throw Object.assign(new Error(`HTTP ${res.status} dla ${url}${detail ? `: ${detail}` : ''}`), { status: res.status, fatal: true });
+        }
         return res;
       } catch (e) {
         clearTimeout(timer);
