@@ -1,0 +1,30 @@
+name: Sprawdzenie konfiguracji
+
+# Uruchamiany ręcznie (Actions -> Sprawdzenie konfiguracji -> Run workflow).
+# Niczego nie wysyła i niczego nie zapisuje: tylko wypisuje, czy klucze są ustawione,
+# czy akty obserwowane mają właściwe tytuły i czy źródła odpowiadają.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Sprawdź konfigurację i źródła
+        run: node src/cli.js verify
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          REPORT_FROM: ${{ secrets.REPORT_FROM }}
+          REPORT_TO: ${{ secrets.REPORT_TO }}
