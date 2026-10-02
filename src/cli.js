@@ -6,6 +6,7 @@ import { createResendMailer, createFileMailer } from './mail.js';
 import { createStore } from './store/index.js';
 import { runScan } from './pipeline.js';
 import { buildSources } from './sources/index.js';
+import { mergeConfig, validateConfig } from './config.js';
 
 const args = process.argv.slice(2);
 const cmd = args[0] ?? 'scan';
@@ -18,7 +19,7 @@ export async function loadConfig(file = process.env.CONFIG_FILE || 'config/defau
 }
 
 async function scan() {
-  const cfg = await loadConfig();
+  const baseCfg = await loadConfig();
   const dryRun = flag('dry-run');
   const fixturesDir = opt('fixtures');
   const http = fixturesDir
@@ -32,6 +33,19 @@ async function scan() {
     ? createFileMailer(opt('out') || 'out')
     : createResendMailer({ apiKey: process.env.RESEND_API_KEY, from: process.env.REPORT_FROM, to: process.env.REPORT_TO, http: realHttp });
   const store = createStore({ dryRun, http: realHttp });
+
+  // Ustawienia z panelu admina (jeśli istnieją) mają pierwszeństwo przed plikiem domyślnym.
+  let cfg = baseCfg;
+  try {
+    const override = await store.getConfig?.();
+    if (override) {
+      const errors = validateConfig(override);
+      if (errors.length) log(`UWAGA: ustawienia z panelu są niepoprawne i zostały zignorowane: ${errors.slice(0, 3).join('; ')}`);
+      else { cfg = mergeConfig(baseCfg, override); log('Użyto ustawień z panelu admina'); }
+    }
+  } catch (e) {
+    log(`UWAGA: nie udało się odczytać ustawień z panelu (${e.message}), używam domyślnych`);
+  }
 
   const result = await runScan({
     cfg, http, store, analyzer, mailer,

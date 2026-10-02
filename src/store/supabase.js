@@ -35,6 +35,10 @@ export function createSupabaseStore({ url, serviceKey, http }) {
       }
       return found;
     },
+    async getConfig() {
+      const rows = await get('settings', 'key=eq.config&select=value&limit=1');
+      return rows[0]?.value ?? null;
+    },
     async hasSeenFrom(sourceId) {
       const rows = await get('seen_items', `source_id=eq.${encodeURIComponent(sourceId)}&select=key&limit=1`);
       return rows.length > 0;

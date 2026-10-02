@@ -1,0 +1,314 @@
+{
+  "school": {
+    "name": "Specjalny Ośrodek Szkolno-Wychowawczy w Ostrołęce",
+    "timezone": "Europe/Warsaw",
+    "profile": "Placówka kształcenia specjalnego (SOSW): szkoły dla uczniów z orzeczeniami o potrzebie kształcenia specjalnego, w tym kształcenie zawodowe z nauczycielami zawodu, zajęcia rewalidacyjne i terapeutyczne (logopedia, psycholog, pedagog specjalny) oraz internat. Sprawdź i dopasuj ten opis do rzeczywistej struktury placówki."
+  },
+  "schedule": {
+    "window": {
+      "from": 17,
+      "to": 19
+    },
+    "lookbackDays": 7,
+    "upcomingDays": 30
+  },
+  "sources": [
+    {
+      "id": "eli-du",
+      "type": "eli",
+      "publisher": "DU",
+      "name": "Dziennik Ustaw",
+      "enabled": true
+    },
+    {
+      "id": "eli-mp",
+      "type": "eli",
+      "publisher": "MP",
+      "name": "Monitor Polski",
+      "enabled": true
+    },
+    {
+      "id": "sejm-druki",
+      "type": "sejm-prints",
+      "term": 10,
+      "name": "Sejm: druki (projekty ustaw)",
+      "enabled": true
+    },
+    {
+      "id": "rcl",
+      "type": "rcl",
+      "name": "RCL: projekty rozporządzeń i ustaw",
+      "urlTemplate": "https://legislacja.rcl.gov.pl/lista?title={q}",
+      "queries": [
+        "Edukacji",
+        "oświat",
+        "szkoł",
+        "nauczyciel",
+        "uczni"
+      ],
+      "enabled": true
+    },
+    {
+      "id": "dz-urz-mazowieckie",
+      "type": "eli-regional",
+      "name": "Dziennik Urzędowy Woj. Mazowieckiego",
+      "baseUrl": "https://edziennik.mazowieckie.pl/api/eli/acts",
+      "publisher": "POL_WOJ_MZ",
+      "viewBaseUrl": "https://edziennik.mazowieckie.pl/eli",
+      "scope": [
+        "ostrołęk",
+        "w ostrołęce",
+        "wojewody mazowieckiego",
+        "sejmiku województwa mazowieckiego",
+        "kuratora oświaty"
+      ],
+      "enabled": true
+    },
+    {
+      "id": "kuratorium-komunikaty",
+      "type": "rss",
+      "name": "Kuratorium Oświaty: komunikaty",
+      "url": "https://www.kuratorium.waw.pl/dokumenty/rss/1-rss-o-3.rss",
+      "enabled": true
+    },
+    {
+      "id": "bip-um-ostroleka",
+      "type": "rss",
+      "name": "BIP Urzędu Miasta Ostrołęki",
+      "url": "https://bip.um.ostroleka.pl/rss",
+      "detailWhenEmpty": true,
+      "enabled": true
+    },
+    {
+      "id": "kuratorium-na-skroty",
+      "type": "rss",
+      "name": "Kuratorium Oświaty: na skróty",
+      "url": "https://www.kuratorium.waw.pl/dokumenty/rss/1-rss-427.rss",
+      "enabled": true
+    },
+    {
+      "id": "men-komunikaty",
+      "type": "rss",
+      "name": "MEN: komunikaty (kanał zewnętrzny)",
+      "url": "https://rss.mtsz.pl/min-edukacja-komunikaty.xml",
+      "enabled": true
+    },
+    {
+      "id": "men-wiadomosci",
+      "type": "rss",
+      "name": "MEN: wiadomości (kanał zewnętrzny)",
+      "url": "https://rss.mtsz.pl/min-edukacja-wiadomosci.xml",
+      "enabled": true
+    }
+  ],
+  "filter": {
+    "minScore": 2
+  },
+  "keywords": {
+    "education": [
+      "oświat",
+      "szkoł",
+      "szkół",
+      "szkolnictw",
+      "nauczyciel",
+      "uczni",
+      "przedszkol",
+      "wychowa",
+      "placówk",
+      "placówek",
+      "pedagog",
+      "rewalidac",
+      "orzeczeni",
+      "orzeczeń",
+      "internat",
+      "kształcenia specjaln",
+      "karta nauczyciela",
+      "edukacj",
+      "sosw",
+      "ośrodk szkolno",
+      "ośrodka szkolno",
+      "ośrodek szkolno"
+    ],
+    "supporting": [
+      "kształcen",
+      "specjaln",
+      "praktyczn",
+      "zawodow",
+      "egzamin",
+      "ocenian",
+      "klasyfikowani",
+      "dostępnoś",
+      "indywidualn",
+      "dzieci",
+      "młodzież"
+    ],
+    "administrative": [
+      "postępowania administracyjnego",
+      "dostępności cyfrowej",
+      "informacji publicznej",
+      "ochronie danych osobowych",
+      "zamówień publicznych",
+      "finansach publicznych",
+      "archiwal",
+      "kancelaryjn",
+      "samorządzie powiatowym",
+      "pracownikach samorządowych"
+    ]
+  },
+  "watchedActs": [
+    {
+      "eli": "DU/2017/59",
+      "name": "Prawo oświatowe"
+    },
+    {
+      "eli": "DU/1991/425",
+      "name": "Ustawa o systemie oświaty"
+    },
+    {
+      "eli": "DU/1982/19",
+      "name": "Karta Nauczyciela"
+    },
+    {
+      "eli": "DU/2017/2203",
+      "name": "Ustawa o finansowaniu zadań oświatowych"
+    }
+  ],
+  "roles": [
+    {
+      "name": "Dyrektor",
+      "scope": "Kieruje placówką, wydaje zarządzenia, zwołuje radę pedagogiczną, odpowiada za statut i organizację."
+    },
+    {
+      "name": "Wicedyrektor",
+      "scope": "Plan zajęć, organizacja pracy, nadzór pedagogiczny, harmonogram praktyk."
+    },
+    {
+      "name": "Pedagog specjalny",
+      "scope": "IPET, orzeczenia, dostosowania wymagań, dokumentacja wsparcia."
+    },
+    {
+      "name": "Psycholog",
+      "scope": "Pomoc psychologiczno-pedagogiczna, diagnozy, wsparcie uczniów i rodziców."
+    },
+    {
+      "name": "Logopeda",
+      "scope": "Terapia logopedyczna, diagnozy logopedyczne, dokumentacja terapii."
+    },
+    {
+      "name": "Nauczyciel zawodu",
+      "scope": "Praktyczna nauka zawodu, programy nauczania zawodowego, egzaminy zawodowe."
+    },
+    {
+      "name": "Wychowawca internatu",
+      "scope": "Regulamin internatu, opieka wychowawcza, bezpieczeństwo wychowanków."
+    },
+    {
+      "name": "Sekretarz",
+      "scope": "Dokumentacja, SIO, BIP, kancelaria, archiwum."
+    },
+    {
+      "name": "Kadry",
+      "scope": "Akta pracownicze, czas pracy, regulamin pracy i wynagradzania."
+    },
+    {
+      "name": "Główny księgowy",
+      "scope": "Finanse, budżet, płace, rozliczenia z organem prowadzącym."
+    },
+    {
+      "name": "IOD",
+      "scope": "Ochrona danych osobowych, RODO, dostępność cyfrowa dokumentów."
+    },
+    {
+      "name": "Specjalista BHP",
+      "scope": "Bezpieczeństwo i higiena pracy oraz nauki, procedury ewakuacji."
+    }
+  ],
+  "documents": [
+    {
+      "name": "Statut SOSW",
+      "needsCouncil": true
+    },
+    {
+      "name": "Regulamin internatu",
+      "needsCouncil": false
+    },
+    {
+      "name": "Procedura opracowania IPET",
+      "needsCouncil": false
+    },
+    {
+      "name": "Program wychowawczo-profilaktyczny",
+      "needsCouncil": true
+    },
+    {
+      "name": "Regulamin praktycznej nauki zawodu",
+      "needsCouncil": false
+    },
+    {
+      "name": "Zarządzenie dyrektora w sprawie obiegu danych SIO",
+      "needsCouncil": false
+    },
+    {
+      "name": "Deklaracja dostępności BIP",
+      "needsCouncil": false
+    },
+    {
+      "name": "Regulamin pracy",
+      "needsCouncil": false
+    },
+    {
+      "name": "Regulamin wynagradzania",
+      "needsCouncil": false
+    },
+    {
+      "name": "Polityka ochrony danych osobowych",
+      "needsCouncil": false
+    },
+    {
+      "name": "Procedury BHP i ewakuacji",
+      "needsCouncil": false
+    }
+  ],
+  "rules": [
+    {
+      "id": "r1",
+      "label": "Zmiana wymaga aktualizacji statutu",
+      "prio": "hi",
+      "on": true
+    },
+    {
+      "id": "r2",
+      "label": "Termin wejścia w życie krótszy niż (dni)",
+      "prio": "hi",
+      "on": true,
+      "num": 30
+    },
+    {
+      "id": "r3",
+      "label": "Zmiana procedury wewnętrznej szkoły",
+      "prio": "mid",
+      "on": true
+    },
+    {
+      "id": "r4",
+      "label": "Wytyczne kuratorium lub organu prowadzącego",
+      "prio": "mid",
+      "on": true
+    },
+    {
+      "id": "r5",
+      "label": "Projekt aktu prawnego lub informacja",
+      "prio": "lo",
+      "on": true
+    },
+    {
+      "id": "r6",
+      "label": "Prawo administracyjne ogólne",
+      "prio": "lo",
+      "on": true
+    }
+  ],
+  "report": {
+    "sendWhenEmpty": true
+  }
+}

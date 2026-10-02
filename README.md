@@ -9,6 +9,9 @@ GitHub Actions (cron) -> źródła -> filtr słów kluczowych -> analiza AI -> r
                       -> zapis w Supabase -> raport e-mail (Resend)
 ```
 
+## Panel admina
+Folder `web/` to panel z logowaniem (hasło + 2FA) i widokiem dla pracowników z linków. Instrukcja uruchomienia: `SETUP-PANEL.md`.
+
 ## Źródła
 
 | Źródło | Co daje | Jak | Wiarygodność |
@@ -99,7 +102,7 @@ Zadania GitHuba mogą się opóźniać, co w oknie kilku godzin nie ma znaczenia
 
 ## Co jest sprawdzone, a co nie
 
-Sprawdzone testami (`npm test`, 55 testów): straż czasu w lecie i zimie, filtr, reguły priorytetów, parsowanie ELI i RSS,
+Sprawdzone testami (`npm test`, 84 testy, w tym panelu w symulowanej przeglądarce): straż czasu w lecie i zimie, filtr, reguły priorytetów, parsowanie ELI i RSS,
 odporność na awarię źródła, idempotencja (dwa uruchomienia w tym samym dniu), ponowienie po nieudanej wysyłce,
 kształt żądania do API Claude, escapowanie treści w e-mailu.
 
@@ -114,4 +117,5 @@ kształt żądania do API Claude, escapowanie treści w e-mailu.
 - Ustawa o bardzo długim tekście jest obcinana do ok. 70 tys. znaków (raport zaznacza to w „Do sprawdzenia”).
 - Akty bez słów kluczowych w tytule i bez odwołania do aktów obserwowanych mogą zostać pominięte.
   Rozszerzaj `keywords` i `watchedActs`, gdy zauważysz lukę.
-- Nie ma jeszcze: generowania szkiców dokumentów, panelu i linków dla pracowników.
+- Nie ma jeszcze: generowania szkiców dokumentów.
+- Panel admina i linki dla pracowników: zob. `SETUP-PANEL.md`.

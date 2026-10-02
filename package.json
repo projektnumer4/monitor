@@ -4,14 +4,20 @@
   "private": true,
   "description": "Codzienny monitoring zmian prawa oświatowego dla SOSW w Ostrołęce",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "scan": "node src/cli.js scan",
     "dry-run": "node src/cli.js scan --dry-run --force --fixtures=test/fixtures --now=2026-10-02T15:40:00Z --mock-ai",
     "verify": "node src/cli.js verify",
-    "test": "node --test"
+    "test": "node --test",
+    "sync-defaults": "cp config/default.json web/defaults.json"
   },
   "dependencies": {
     "fast-xml-parser": "^4.5.0"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.3"
   }
 }
