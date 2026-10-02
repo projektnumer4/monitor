@@ -19,23 +19,20 @@ GitHub Actions (cron) -> źródła -> filtr słów kluczowych -> analiza AI -> r
 | Dziennik Urzędowy Woj. Mazowieckiego | uchwały organu prowadzącego, akty wojewody i sejmiku | API dziennika zgodne z ELI, zawężone do `scope` | oficjalne API, **struktura odpowiedzi niezweryfikowana na żywo** |
 | Kuratorium Oświaty (komunikaty, na skróty) | komunikaty i wytyczne kuratora | oficjalne kanały RSS kuratorium | kanały podane na stronie kuratorium |
 | MEN (komunikaty, wiadomości) | komunikaty ministerstwa | kanały RSS **zewnętrznego serwisu** `rss.mtsz.pl` | nieoficjalne |
-| BIP organu prowadzącego | uchwały i zarządzenia | lista linków ze strony (wyłączone, wymaga Twojego adresu) | zależy od układu strony |
+| BIP Urzędu Miasta Ostrołęki | uchwały, projekty uchwał, zarządzenia Prezydenta | oficjalny kanał RSS + temat ze strony zarządzenia | kanał potwierdzony; wyciąganie tematu zależy od układu strony |
 
 Ustawa zmieniająca „niektóre inne ustawy” często nie ma w tytule nic o oświacie. Dlatego silnik sprawdza też,
 czy akt **zmienia któryś z aktów obserwowanych** (`watchedActs`: Prawo oświatowe, Karta Nauczyciela itd.).
 Dotyczy to Dziennika Ustaw. Druki sejmowe i projekty RCL są oceniane po tytule, więc ogólny tytuł może je ukryć.
 
-### Zakres lokalny (organ prowadzący)
-W `config/default.json`, w źródle `dz-urz-mazowieckie`, pole `scope` zawiera terminy, które muszą wystąpić w tytule aktu
-(domyślnie: `ostrołęk`, `ostrołęc`, wojewoda mazowiecki, sejmik, kurator oświaty). **Ustal, kto jest organem prowadzącym SOSW**
-(miasto czy powiat) i dopasuj `scope`. Dziennik zawiera uchwały wszystkich gmin województwa, więc bez zawężenia raport byłby zalany.
-
-### Włączenie BIP organu prowadzącego
-1. Otwórz w przeglądarce stronę z listą uchwał lub zarządzeń organu prowadzącego i skopiuj jej adres.
-2. W `config/default.json`, w źródle `bip-organ-prowadzacy`, wpisz go w `url` i ustaw `"enabled": true`.
-3. Przy pierwszym skanie silnik tylko zapamięta istniejące linki (raport napisze, że źródło zainicjowano).
-   Nowe uchwały i zarządzenia zostaną zgłoszone od kolejnego skanu.
-4. Pole `include` to wyrażenie regularne zawężające linki (domyślnie uchwały, zarządzenia, statut, oświata, szkoły).
+### Organ prowadzący: Miasto Ostrołęka
+- **BIP Urzędu Miasta Ostrołęki** (`https://bip.um.ostroleka.pl/rss`): oficjalny kanał RSS ze wszystkimi nowymi uchwałami, projektami uchwał na sesje i zarządzeniami Prezydenta.
+  Kanał podaje dla zarządzeń tylko numer, więc silnik pobiera ze strony zarządzenia jego temat („w sprawie”) i dopiero wtedy ocenia trafność (`detailWhenEmpty`).
+- **Dziennik Urzędowy Woj. Mazowieckiego**: w `scope` są terminy, które muszą wystąpić w tytule aktu
+  (`ostrołęk`, `w ostrołęce`, wojewoda mazowiecki, sejmik, kurator oświaty). Dziennik zawiera uchwały wszystkich gmin województwa,
+  więc bez zawężenia raport byłby zalany. Ta sama uchwała może pojawić się dwa razy: w BIP (jako projekt lub uchwała)
+  i w Dzienniku (publikacja, od której liczy się wejście w życie). To zamierzone.
+- Dla innych stron bez RSS jest typ źródła `links` (lista linków ze strony, z inicjalizacją przy pierwszym skanie).
 
 ## Uruchomienie krok po kroku
 
@@ -102,7 +99,7 @@ Zadania GitHuba mogą się opóźniać, co w oknie kilku godzin nie ma znaczenia
 
 ## Co jest sprawdzone, a co nie
 
-Sprawdzone testami (`npm test`, 53 testy): straż czasu w lecie i zimie, filtr, reguły priorytetów, parsowanie ELI i RSS,
+Sprawdzone testami (`npm test`, 55 testów): straż czasu w lecie i zimie, filtr, reguły priorytetów, parsowanie ELI i RSS,
 odporność na awarię źródła, idempotencja (dwa uruchomienia w tym samym dniu), ponowienie po nieudanej wysyłce,
 kształt żądania do API Claude, escapowanie treści w e-mailu.
 

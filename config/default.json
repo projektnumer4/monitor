@@ -57,7 +57,7 @@
       "viewBaseUrl": "https://edziennik.mazowieckie.pl/eli",
       "scope": [
         "ostrołęk",
-        "ostrołęc",
+        "w ostrołęce",
         "wojewody mazowieckiego",
         "sejmiku województwa mazowieckiego",
         "kuratora oświaty"
@@ -69,6 +69,14 @@
       "type": "rss",
       "name": "Kuratorium Oświaty: komunikaty",
       "url": "https://www.kuratorium.waw.pl/dokumenty/rss/1-rss-o-3.rss",
+      "enabled": true
+    },
+    {
+      "id": "bip-um-ostroleka",
+      "type": "rss",
+      "name": "BIP Urzędu Miasta Ostrołęki",
+      "url": "https://bip.um.ostroleka.pl/rss",
+      "detailWhenEmpty": true,
       "enabled": true
     },
     {
@@ -91,18 +99,6 @@
       "name": "MEN: wiadomości (kanał zewnętrzny)",
       "url": "https://rss.mtsz.pl/min-edukacja-wiadomosci.xml",
       "enabled": true
-    },
-    {
-      "id": "bip-organ-prowadzacy",
-      "type": "links",
-      "name": "BIP organu prowadzącego: uchwały i zarządzenia",
-      "url": "",
-      "include": "uchwa|zarządz|statut|oświat|szkoł",
-      "exclude": "",
-      "minTitleLength": 15,
-      "maxItems": 80,
-      "enabled": false,
-      "note": "Wklej adres strony z listą uchwał lub zarządzeń organu prowadzącego i ustaw enabled na true"
     }
   ],
   "filter": {
@@ -127,7 +123,11 @@
       "internat",
       "kształcenia specjaln",
       "karta nauczyciela",
-      "edukacj"
+      "edukacj",
+      "sosw",
+      "ośrodk szkolno",
+      "ośrodka szkolno",
+      "ośrodek szkolno"
     ],
     "supporting": [
       "kształcen",

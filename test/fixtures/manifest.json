@@ -85,5 +85,17 @@
  },
  "https://bip.test/uchwala/1": {
   "file": "kuratorium-page.html"
+ },
+ "https://bip.um.ostroleka.pl/rss": {
+  "file": "bip-rss.xml"
+ },
+ "https://bip.um.ostroleka.pl/zarzadzenie/19500/zarzadzenie-nr-301-2026": {
+  "file": "bip-zarz-301.html"
+ },
+ "https://bip.um.ostroleka.pl/zarzadzenie/19501/zarzadzenie-nr-302-2026": {
+  "file": "bip-zarz-302.html"
+ },
+ "https://bip.um.ostroleka.pl/artykul/46/19502/projekt-uchwaly-na-sesje-xlv-2026": {
+  "file": "kuratorium-page.html"
  }
 }

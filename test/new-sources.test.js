@@ -7,6 +7,7 @@ import { createSejmPrintsSource } from '../src/sources/sejm.js';
 import { createEliRegionalSource } from '../src/sources/eli-regional.js';
 import { createRclSource, parseRclList } from '../src/sources/rcl.js';
 import { createLinksSource, parseLinks } from '../src/sources/links.js';
+import { createRssSource, extractSubject } from '../src/sources/rss.js';
 import { buildSources } from '../src/sources/index.js';
 import { runScan } from '../src/pipeline.js';
 import { createFileStore } from '../src/store/file.js';
@@ -30,6 +31,7 @@ test('Dziennik wojewódzki: tylko akty z zakresu (organ prowadzący), pozostałe
   const def = cfg.sources.find((s) => s.id === 'dz-urz-mazowieckie');
   const items = await createEliRegionalSource(def).listNew(await ctx());
   assert.deepEqual(items.map((i) => i.key).sort(), ['POL_WOJ_MZ/2026/9001', 'POL_WOJ_MZ/2026/9003']);
+  assert.ok(!items.some((i) => /powiatu ostrołęckiego/i.test(i.title)), 'powiat nie jest organem prowadzącym');
   assert.match(items[0].url, /edziennik\.mazowieckie\.pl\/eli\/POL_WOJ_MZ\/2026\/\d+\/ogl\/pol\/pdf$/);
 });
 
@@ -65,6 +67,25 @@ test('Linki: parser pomija nawigację, filtry include/exclude działają', async
   assert.equal(items[0].url, 'https://bip.test/uchwala/1');
 });
 
+test('RSS BIP: temat zarządzenia pobierany ze strony, gdy kanał go nie podaje', async () => {
+  const cfg = await loadCfg();
+  const src = createRssSource(cfg.sources.find((s) => s.id === 'bip-um-ostroleka'));
+  const c = await ctx();
+  const items = await src.listNew(c);
+  assert.equal(items.length, 3, 'stare zarządzenie poza oknem czasu jest pominięte');
+  const z = await src.enrich(items.find((i) => i.title.includes('301/2026')), c);
+  assert.match(z.summary, /szkół i placówek oświatowych/);
+  const p = await src.enrich(items.find((i) => i.title.includes('Projekt uchwały')), c);
+  assert.match(p.summary, /Szkolno-Wychowawczego/, 'pozycja z opisem nie wymaga pobierania strony');
+  const broken = await src.enrich({ ...items[0], summary: '', url: 'https://bip.um.ostroleka.pl/brak' }, c);
+  assert.equal(broken.summary, '', 'niedostępna strona nie przerywa przetwarzania');
+});
+
+test('extractSubject: wyciąga temat po "w sprawie", a bez niego zwraca pusty tekst', () => {
+  assert.equal(extractSubject('wydane przez Prezydenta\nw sprawie: zmiany uchwały budżetowej na 2026 rok\nStatus'), 'zmiany uchwały budżetowej na 2026 rok');
+  assert.equal(extractSubject('brak tematu'), '');
+});
+
 test('buildSources: włączone źródło bez adresu to czytelny błąd, wyłączone jest pomijane', async () => {
   const cfg = await loadCfg();
   assert.ok(!buildSources(cfg).some((s) => s.id === 'bip-organ-prowadzacy'));
@@ -91,6 +112,9 @@ test('potok z nowymi źródłami: druk sejmowy, projekt RCL, akt lokalny i komun
   assert.ok(keys.includes('POL_WOJ_MZ/2026/9001'), 'uchwała Rady Miasta Ostrołęki o statucie SOSW');
   assert.ok(!keys.includes('POL_WOJ_MZ/2026/9002'), 'uchwała innej gminy poza zakresem');
   assert.ok(keys.some((k) => k.startsWith('rss:kuratorium-komunikaty')), 'komunikat kuratorium');
+  assert.ok(keys.some((k) => k.includes('bip-um-ostroleka') && k.includes('19500')), 'zarządzenie z BIP, wykryte po temacie ze strony');
+  assert.ok(keys.some((k) => k.includes('bip-um-ostroleka') && k.includes('19502')), 'projekt uchwały o statucie SOSW z BIP');
+  assert.ok(!keys.some((k) => k.includes('19501')), 'zarządzenie o służebności przesyłu odfiltrowane');
   const bill = r.changes.find((c) => c.key === 'sejm:t10:druk:1234');
   assert.equal(bill.status, 'projekt');
   assert.equal(bill.priority, 'lo', 'projekt ustawy ma niski priorytet do czasu uchwalenia');

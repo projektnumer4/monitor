@@ -19,6 +19,12 @@ function toIsoDate(raw) {
   return Number.isNaN(d.getTime()) ? isoOrNull(raw) : d.toISOString().slice(0, 10);
 }
 
+/** Wyciąga temat z podstrony typu BIP ("w sprawie: ..."). Zwraca pusty tekst, gdy go nie ma. */
+export function extractSubject(text) {
+  const m = String(text).match(/w sprawie\W{0,4}([^\n]{5,500})/i);
+  return m ? m[1].replace(/\s+/g, ' ').trim() : '';
+}
+
 /** Parsuje RSS 2.0 i Atom do jednolitej listy. */
 export function parseFeed(xml) {
   const doc = parser.parse(xml);
@@ -55,8 +61,18 @@ export function createRssSource(def) {
         }));
     },
 
-    async enrich(c) {
-      return c;
+    /**
+     * Niektóre BIP-y (np. Urzędu Miasta Ostrołęki) podają w kanale tylko numer zarządzenia, a temat jest na jego stronie.
+     * Przy detailWhenEmpty pobieramy ją dla pozycji bez opisu, żeby filtr miał z czego ocenić trafność.
+     */
+    async enrich(c, ctx) {
+      if (!def.detailWhenEmpty || c.summary) return c;
+      try {
+        const subject = extractSubject(stripHtml(await ctx.http.text(c.url, { headers: { Accept: 'text/html' } })));
+        return subject ? { ...c, summary: subject } : c;
+      } catch {
+        return c; // strona niedostępna: zostaje sam tytuł, pozycja nie jest tracona
+      }
     },
 
     async loadText(c, ctx) {
