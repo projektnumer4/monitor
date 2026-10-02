@@ -33,6 +33,9 @@ jobs:
       - name: Skan i raport
         run: node src/cli.js scan ${{ github.event_name == 'workflow_dispatch' && inputs.force && '--force' || '' }}
         env:
+          AI_PROVIDER: ${{ vars.AI_PROVIDER }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
