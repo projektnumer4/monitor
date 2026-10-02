@@ -1,0 +1,43 @@
+name: Dzienny skan prawa
+
+on:
+  schedule:
+    # Dwa zapisy w UTC pokrywają czas letni i zimowy w Polsce.
+    # Skrypt sam sprawdza, czy jest właściwa pora (okno 17:00-19:59 czasu warszawskiego)
+    # i czy dzisiejszy skan już się nie odbył, więc w praktyce wykona się raz dziennie.
+    - cron: '30 15 * * *'
+    - cron: '30 16 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Wymuś skan niezależnie od pory dnia'
+        type: boolean
+        default: true
+
+concurrency:
+  group: dzienny-skan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Skan i raport
+        run: node src/cli.js scan ${{ github.event_name == 'workflow_dispatch' && inputs.force && '--force' || '' }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          REPORT_FROM: ${{ secrets.REPORT_FROM }}
+          REPORT_TO: ${{ secrets.REPORT_TO }}
+          APP_URL: ${{ vars.APP_URL }}
