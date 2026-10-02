@@ -35,6 +35,14 @@ export function createSupabaseStore({ url, serviceKey, http }) {
       }
       return found;
     },
+    async listDocuments() { return get('school_documents', 'select=name,content,chars,content_hash,updated_at'); },
+    async listDrafts() { return get('document_drafts', 'select=id,change_key,document_name,status'); },
+    async saveDraft(d) { await upsert('document_drafts', [d], 'change_key,document_name'); },
+    async listOpenChanges() { return get('changes', 'workflow=in.(new,in_progress)&select=*'); },
+    async getChange(key) {
+      const rows = await get('changes', `key=eq.${encodeURIComponent(key)}&select=*&limit=1`);
+      return rows[0] ?? null;
+    },
     async getConfig() {
       const rows = await get('settings', 'key=eq.config&select=value&limit=1');
       return rows[0]?.value ?? null;

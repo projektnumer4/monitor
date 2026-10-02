@@ -47,6 +47,16 @@ Alternatywa: Netlify albo Vercel jako projekt statyczny z katalogiem publikacji 
    **Zapisz kody zapasowe aplikacji i nie gub telefonu**: bez drugiego składnika nie wejdziesz do panelu.
 3. Wejdź w **Linki dla pracowników**, wybierz rolę i utwórz link. Link pokazuje się tylko raz (w bazie jest wyłącznie jego skrót).
 
+## Szkice dokumentów: konfiguracja (jednorazowo)
+
+**Kolejność ma znaczenie.** Najpierw baza, potem kod, bo nowy silnik zapisuje dodatkowe pole, którego stara baza nie ma.
+
+1. W Supabase wykonaj `supabase/drafts.sql` (SQL Editor → New query → wklej → Run).
+2. Wgraj nowy kod do repo i dodaj plik workflow `.github/workflows/drafts.yml` (zawartość w załączniku).
+3. W panelu otwórz **Dokumenty szkoły** i wgraj tekst statutu oraz procedur (bez danych osobowych).
+4. Szkice pojawią się w zakładce **Szkice dokumentów** po najbliższym skanie albo po ręcznym uruchomieniu workflow *Szkice dokumentów*.
+5. Wymagany jest tryb AI `gemini` lub `claude`.
+
 ## Jak panel łączy się z silnikiem skanowania
 
 Zmiany w zakładkach **Źródła**, **Priorytety i słowa kluczowe**, **Role** i **Ustawienia** zapisują się w bazie.

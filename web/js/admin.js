@@ -3,10 +3,15 @@ import {
   deadlineText, sortChanges, pluralZmiana, slug, toast, deepClone,
 } from './util.js';
 import { mergeConfig, persistable } from './cfg.js';
+import { resolveEdits, buildSegments, textAfter, contextFor, changeList, summarize } from './drafts-lib.js';
+import { buildDocxDocument } from './docx-export.js';
+import { readDocumentFile, loaders as realLoaders, downloadBlob } from './files.js';
 
 const ico = {
   '': '<path d="M4 5h16M4 12h10M4 19h16"/>',
   zmiany: '<path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 13 9 5 9-5"/>',
+  szkice: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
+  dokumenty: '<path d="M4 4h10l6 6v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M14 4v6h6M7 14h10M7 18h6"/>',
   role: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.4 3.2-5.5 6.5-5.5s5.9 2.1 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14.8c1.7.7 2.8 2.4 3 5.2"/>',
   zrodla: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.9 5.6 3.9 9s-1.3 6.4-3.9 9c-2.6-2.6-3.9-5.6-3.9-9S9.4 5.6 12 3Z"/>',
   priorytety: '<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>',
@@ -14,16 +19,20 @@ const ico = {
   skany: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   ustawienia: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>',
 };
-const NAV = [['', 'Przegląd'], ['zmiany', 'Zmiany prawa'], ['role', 'Role i zadania'], ['zrodla', 'Źródła'], ['priorytety', 'Priorytety i słowa kluczowe'], ['linki', 'Linki dla pracowników'], ['skany', 'Historia skanów'], ['ustawienia', 'Ustawienia i konto']];
+const NAV = [['', 'Przegląd'], ['zmiany', 'Zmiany prawa'], ['szkice', 'Szkice dokumentów'], ['dokumenty', 'Dokumenty szkoły'], ['role', 'Role i zadania'], ['zrodla', 'Źródła'], ['priorytety', 'Priorytety i słowa kluczowe'], ['linki', 'Linki dla pracowników'], ['skany', 'Historia skanów'], ['ustawienia', 'Ustawienia i konto']];
 const OPEN = new Set(['new', 'in_progress']);
 const KW_GROUPS = [['education', 'Oświata (mocne)', 'Słowa, które same wystarczą, by akt trafił do analizy'], ['supporting', 'Pomocnicze', 'Słabsze sygnały, liczą się dopiero w połączeniu z innymi'], ['administrative', 'Prawo administracyjne', 'Tematy ogólne, które też dotyczą szkoły']];
 
 const pr = (p) => `<span class="pr ${p}">${PRIORITY_LABEL[p] ?? p}</span>`;
+const DRAFT_LABEL = { requested: 'Oczekuje', ready: 'Do przeglądu', no_changes: 'Bez zmian', failed: 'Błąd', accepted: 'Zatwierdzony', rejected: 'Odrzucony' };
+const dst = (d) => `<span class="status ${d}">${DRAFT_LABEL[d] ?? d}</span>`;
+const TYPE_LABEL = { replace: 'zamiana', delete: 'usunięcie', insert_after: 'dopisanie' };
+const CONF_LABEL = { high: 'pewność wysoka', medium: 'pewność średnia', low: 'pewność niska' };
 const wf = (w) => `<span class="status ${w}">${WORKFLOW_LABEL[w] ?? w}</span>`;
 
-export function createAdminApp({ api: A, root, defaults, user, logout, sb, now = () => new Date() }) {
+export function createAdminApp({ api: A, root, defaults, user, logout, sb, now = () => new Date(), loaders = realLoaders }) {
   const S = {
-    cfg: deepClone(defaults), changes: [], runs: [], links: [], newLink: null, factors: null,
+    cfg: deepClone(defaults), changes: [], runs: [], links: [], docs: [], drafts: [], docCache: null, docLoading: null, preview: null, newLink: null, factors: null,
     filter: { prio: 'all', wf: 'open', q: '' }, loading: true, error: null,
   };
   const today = () => todayWarsaw(now());
@@ -32,8 +41,8 @@ export function createAdminApp({ api: A, root, defaults, user, logout, sb, now =
   async function load() {
     S.loading = true; S.error = null; render();
     try {
-      const [changes, runs, links, override] = await Promise.all([A.loadChanges(), A.loadRuns(), A.listLinks(), A.loadConfigOverride()]);
-      Object.assign(S, { changes, runs, links, cfg: override ? mergeConfig(defaults, override) : deepClone(defaults) });
+      const [changes, runs, links, override, docs, drafts] = await Promise.all([A.loadChanges(), A.loadRuns(), A.listLinks(), A.loadConfigOverride(), A.listDocuments(), A.listDrafts()]);
+      Object.assign(S, { changes, runs, links, docs, drafts, cfg: override ? mergeConfig(defaults, override) : deepClone(defaults) });
     } catch (e) {
       S.error = e.message;
     }
@@ -68,7 +77,7 @@ export function createAdminApp({ api: A, root, defaults, user, logout, sb, now =
     const urgent = S.changes.filter((c) => c.priority === 'hi' && OPEN.has(c.workflow)).length;
     return `<div class="shell"><aside class="side">
       <div class="brand"><div class="logo">§</div><div><b>Monitor prawa</b><span>SOSW Ostrołęka</span></div></div>
-      <nav class="nav" aria-label="Główna nawigacja">${NAV.map(([k, l]) => `<a href="#/${k}" style="text-decoration:none"><button class="${page === k ? 'on' : ''}" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ico[k]}</svg>${l}${k === 'zmiany' && urgent ? `<span class="count">${urgent}</span>` : ''}</button></a>`).join('')}</nav>
+      <nav class="nav" aria-label="Główna nawigacja">${NAV.map(([k, l]) => `<a href="#/${k}" style="text-decoration:none"><button class="${page === k ? 'on' : ''}" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ico[k]}</svg>${l}${k === 'zmiany' && urgent ? `<span class="count">${urgent}</span>` : ''}${k === 'szkice' && S.drafts.filter((d) => d.status === 'ready').length ? `<span class="count" style="background:var(--accent)">${S.drafts.filter((d) => d.status === 'ready').length}</span>` : ''}</button></a>`).join('')}</nav>
       <div class="side-foot">
         <button class="btn sm" data-a="theme">Zmień motyw jasny/ciemny</button>
         <div class="userbox"><div class="avatar">${esc((user?.email ?? 'A').slice(0, 2).toUpperCase())}</div><div style="min-width:0"><b style="font-size:13px">Administrator</b><div class="muted" style="font-size:12px;overflow:hidden;text-overflow:ellipsis">${esc(user?.email ?? '')}</div></div></div>
@@ -163,6 +172,7 @@ export function createAdminApp({ api: A, root, defaults, user, logout, sb, now =
         <div class="stack">
           <div class="card pad"><h2 style="margin-bottom:10px">Dokumenty do zmiany</h2>${(c.documents ?? []).length ? c.documents.map((d) => `<div class="row" style="padding:5px 0">📄 <span>${esc(d)}</span></div>`).join('') : '<p class="muted small">Żaden dokument szkoły nie wymaga zmian na tym etapie.</p>'}
             ${c.requires_council_resolution ? '<div class="note" style="margin-top:12px"><span>ℹ️</span><span>Wymaga uchwały rady pedagogicznej.</span></div>' : ''}</div>
+          ${draftsCard(c)}
           <form class="card pad stack" data-form="savechange" data-key="${esc(c.key)}">
             <h2>Obsługa</h2>
             <div class="field" style="margin:0"><label for="wf">Stan</label><select id="wf" name="workflow">${Object.entries(WORKFLOW_LABEL).map(([k, l]) => `<option value="${k}" ${c.workflow === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
@@ -258,6 +268,106 @@ export function createAdminApp({ api: A, root, defaults, user, logout, sb, now =
         <div><button class="btn danger" data-a="resetcfg">Przywróć ustawienia domyślne</button></div></div>`;
   }
 
+  /* ---------- szkice dokumentów ---------- */
+  const draftFor = (key, name) => S.drafts.find((d) => d.change_key === key && d.document_name === name);
+  const docMeta = (name) => S.docs.find((d) => d.name === name);
+
+  function draftsCard(c) {
+    const names = c.documents ?? [];
+    if (!names.length) return '';
+    return `<div class="card pad stack"><h2>Szkice dokumentów</h2>${names.map((name) => {
+      const d = draftFor(c.key, name);
+      const lib = docMeta(name);
+      let action;
+      if (d && ['ready', 'no_changes', 'accepted', 'rejected'].includes(d.status)) action = `<a class="btn pri sm" href="#/szkice/${esc(d.id)}" style="text-decoration:none">Otwórz szkic</a>`;
+      else if (d?.status === 'requested') action = '<span class="muted small">Zostanie przygotowany przy najbliższym skanie</span>';
+      else if (!lib) action = '<a class="btn sm" href="#/dokumenty" style="text-decoration:none">Wgraj dokument</a>';
+      else action = `<button class="btn pri sm" data-a="reqdraft" data-key="${esc(c.key)}" data-name="${esc(name)}">${d?.status === 'failed' ? 'Spróbuj ponownie' : 'Przygotuj szkic'}</button>`;
+      return `<div class="row" style="justify-content:space-between;gap:8px"><span>📄 ${esc(name)} ${d ? dst(d.status) : lib ? '' : '<span class="tag">brak w bibliotece</span>'}</span>${action}</div>${d?.status === 'failed' && d.error ? `<div class="small" style="color:var(--hi)">${esc(d.error)}</div>` : ''}`;
+    }).join('')}<p class="muted small">Szkice powstają automatycznie podczas dziennego skanu dla dokumentów wgranych do biblioteki.</p></div>`;
+  }
+
+  function pDocs() {
+    const preview = S.preview;
+    return `${top('Dokumenty szkoły', 'Wgraj tekst dokumentów, które system ma aktualizować. Na ich podstawie powstają szkice zmian.')}
+      <div class="warn" style="margin-bottom:16px">⚠️ <span>Wgrywaj wyłącznie dokumenty ogólne (statut, regulaminy, procedury). <b>Bez danych osobowych</b> uczniów i pracowników.</span></div>
+      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(360px,1fr))">${S.cfg.documents.map((d) => {
+    const m = docMeta(d.name);
+    return `<div class="card pad stack"><div class="row" style="justify-content:space-between"><h3>${esc(d.name)}</h3>${m ? `<span class="status done">wgrany</span>` : '<span class="status dismissed">brak</span>'}</div>
+      <p class="muted small">${m ? `${esc(m.chars)} znaków, zaktualizowano ${esc(plDate(m.updated_at))}` : 'Nie wgrano jeszcze tekstu tego dokumentu.'}</p>
+      <div class="field" style="margin:0"><label for="f-${esc(slug(d.name))}">Plik (.docx, .txt, .md)</label><input id="f-${esc(slug(d.name))}" type="file" accept=".docx,.txt,.md" data-c="docfile" data-name="${esc(d.name)}"></div>
+      <form data-form="savedoc" data-name="${esc(d.name)}" class="stack" style="gap:8px"><textarea name="content" placeholder="…albo wklej tekst dokumentu tutaj" style="min-height:90px" aria-label="Tekst dokumentu ${esc(d.name)}"></textarea><div class="row"><button class="btn sm pri" type="submit">Zapisz wklejony tekst</button>${m ? `<button class="btn sm" type="button" data-a="previewdoc" data-name="${esc(d.name)}">Podgląd</button><button class="btn sm danger" type="button" data-a="deldocfile" data-name="${esc(d.name)}">Usuń tekst</button>` : ''}</div></form></div>`;
+  }).join('')}</div>
+      ${preview ? `<div class="card pad stack" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h2>Podgląd: ${esc(preview.name)}</h2><button class="btn sm" data-a="closepreview">Zamknij</button></div><div class="doc" style="white-space:pre-wrap;max-height:420px;overflow:auto">${esc(preview.content.slice(0, 6000))}${preview.content.length > 6000 ? '\n…' : ''}</div></div>` : ''}
+      <p class="muted small" style="margin-top:14px">Plik PDF zapisz najpierw jako dokument Word albo wklej jego tekst. Zmiany w liście dokumentów (dodawanie, usuwanie nazw) są w <a href="#/ustawienia">Ustawieniach</a>.</p>`;
+  }
+
+  function pDraftList() {
+    const list = [...S.drafts].sort((a, b) => ['ready', 'requested', 'failed', 'accepted', 'no_changes', 'rejected'].indexOf(a.status) - ['ready', 'requested', 'failed', 'accepted', 'no_changes', 'rejected'].indexOf(b.status));
+    return `${top('Szkice dokumentów', 'Propozycje zmian w dokumentach szkoły, przygotowane na podstawie wykrytych zmian prawa. Każdą zmianę decydujesz Ty.')}
+      <div class="card"><div class="wrap-x"><table class="tbl"><thead><tr><th>Dokument</th><th>Zmiana prawa</th><th>Stan</th><th>Propozycje</th><th></th></tr></thead><tbody>
+      ${list.length ? list.map((d) => { const c = S.changes.find((x) => x.key === d.change_key); const m = summarize(d); return `<tr><td><b>${esc(d.document_name)}</b></td><td>${c ? `<a href="#/zmiany/${encodeURIComponent(c.key)}">${esc(c.title.length > 60 ? `${c.title.slice(0, 58)}…` : c.title)}</a>` : esc(d.change_key)}</td><td>${dst(d.status)}</td><td>${['ready', 'accepted', 'rejected', 'no_changes'].includes(d.status) ? `${m.accepted}/${m.located} przyjęte${m.unlocated ? `, ${m.unlocated} do ręcznego wstawienia` : ''}` : '—'}</td><td style="text-align:right"><a class="btn sm" href="#/szkice/${esc(d.id)}" style="text-decoration:none">Otwórz</a></td></tr>`; }).join('') : '<tr><td colspan="5" class="muted">Brak szkiców. Wgraj dokumenty do biblioteki, a system przygotuje szkice przy kolejnym skanie.</td></tr>'}
+      </tbody></table></div></div>`;
+  }
+
+  function pDraft(id) {
+    const d = S.drafts.find((x) => x.id === id);
+    if (!d) return '<a class="back" href="#/szkice" style="text-decoration:none">← Wróć do szkiców</a><div class="card empty">Nie znaleziono tego szkicu.</div>';
+    const c = S.changes.find((x) => x.key === d.change_key);
+    const doc = S.docCache?.name === d.document_name ? S.docCache : null;
+    const m = summarize(d);
+    const stale = doc && d.doc_hash && doc.content_hash && d.doc_hash !== doc.content_hash;
+    const head = `<a class="back" href="#/szkice" style="text-decoration:none;display:inline-block">← Wróć do szkiców</a>
+      <div class="row" style="margin-bottom:10px">${dst(d.status)}${d.model ? `<span class="tag">${esc(d.model)}</span>` : ''}</div>
+      <h1>${esc(d.document_name)}</h1>
+      <p class="muted" style="margin:6px 0 16px">Zmiana prawa: ${c ? `<a href="#/zmiany/${encodeURIComponent(c.key)}">${esc(c.title)}</a>` : esc(d.change_key)}</p>`;
+    if (d.status === 'requested') return `${head}<div class="card pad">Szkic oczekuje na przygotowanie. Powstanie przy najbliższym skanie albo po ręcznym uruchomieniu workflow <b>Szkice dokumentów</b> w GitHubie (Actions).</div>`;
+    if (d.status === 'failed') return `${head}<div class="errbox" role="alert">${esc(d.error ?? 'Nie udało się przygotować szkicu.')}</div><p style="margin-top:12px"><button class="btn pri" data-a="regen" data-id="${esc(d.id)}">Spróbuj ponownie</button></p>`;
+    const warnings = [
+      stale ? '⚠️ Dokument w bibliotece zmienił się po przygotowaniu szkicu. Zmiany są odnajdywane na nowo w aktualnym tekście, ale sprawdź je uważnie.' : '',
+      !doc ? 'Wczytuję dokument…' : '',
+      m.unlocated ? `ℹ️ ${m.unlocated} ${m.unlocated === 1 ? 'propozycji nie udało się' : 'propozycji nie udało się'} umiejscowić w dokumencie. Wstaw ${m.unlocated === 1 ? 'ją' : 'je'} ręcznie (lista poniżej).` : '',
+    ].filter(Boolean);
+    const edit = (e) => {
+      const ctx = doc && e.located ? contextFor(doc.content, e) : null;
+      const del = e.type === 'insert_after' ? '' : e.before;
+      const body = ctx
+        ? `<div class="doc small" style="white-space:pre-wrap;padding:12px 14px">${esc(ctx.pre)}${e.type === 'insert_after' ? esc(e.anchor ?? '') : ''}${del ? `<del>${esc(del)}</del>` : ''}${e.type !== 'delete' ? `<ins>${esc(e.after)}</ins>` : ''}${esc(ctx.post)}</div>`
+        : `<div class="doc small" style="white-space:pre-wrap;padding:12px 14px">${e.type === 'insert_after' ? `Po fragmencie: „${esc(e.anchor ?? '')}”\n` : del ? `<del>${esc(del)}</del>` : ''}${e.type !== 'delete' ? `<ins>${esc(e.after)}</ins>` : ''}</div>`;
+      return `<div class="card pad stack" data-edit="${esc(e.id)}"><div class="row" style="justify-content:space-between"><b>${esc(e.section || 'Zmiana')}</b><span class="row" style="gap:6px"><span class="tag">${TYPE_LABEL[e.type]}</span><span class="tag">${CONF_LABEL[e.confidence] ?? ''}</span>${e.decision === 'accepted' ? '<span class="status done">przyjęta</span>' : e.decision === 'rejected' ? '<span class="status dismissed">odrzucona</span>' : ''}</span></div>
+        ${e.located ? '' : `<div class="warn">⚠️ <span>Nie umiejscowiono w dokumencie: ${esc(e.problem ?? 'nieznany powód')}. Wstaw ręcznie.</span></div>`}
+        ${body}<p class="small"><span class="muted">Uzasadnienie:</span> ${esc(e.rationale)}</p>
+        <div class="row">${e.located ? `<button class="btn sm pri" data-a="decide" data-id="${esc(d.id)}" data-e="${esc(e.id)}" data-v="accepted" ${e.decision === 'accepted' ? 'disabled' : ''}>Przyjmij</button><button class="btn sm danger" data-a="decide" data-id="${esc(d.id)}" data-e="${esc(e.id)}" data-v="rejected" ${e.decision === 'rejected' ? 'disabled' : ''}>Odrzuć</button>${e.decision !== 'pending' ? `<button class="btn sm" data-a="decide" data-id="${esc(d.id)}" data-e="${esc(e.id)}" data-v="pending">Cofnij decyzję</button>` : ''}` : '<span class="muted small">Zmiana bez umiejscowienia nie wchodzi do pobranego dokumentu.</span>'}</div></div>`;
+    };
+    const unl = d.edits.filter((e) => !e.located);
+    return `${head}
+      <div class="card pad" style="margin-bottom:16px"><h2 style="margin-bottom:6px">Podsumowanie</h2><p>${esc(d.summary || '')}</p>
+        <p class="muted small" style="margin-top:8px">Propozycje: ${m.total}, w tym umiejscowione: ${m.located}, przyjęte: ${m.accepted}, odrzucone: ${m.rejected}, czekające na decyzję: ${m.pending}.</p></div>
+      ${warnings.map((w) => `<div class="warn" style="margin-bottom:12px">${esc(w)}</div>`).join('')}
+      ${d.status === 'no_changes' ? '<div class="okbox">✅ <span>Model uznał, że ten dokument nie wymaga zmian z powodu tej zmiany prawa.</span></div>' : ''}
+      <div class="row" style="margin:16px 0">${m.pending ? `<button class="btn" data-a="acceptall" data-id="${esc(d.id)}">Przyjmij wszystkie umiejscowione (${m.pending})</button>` : ''}
+        <button class="btn pri" data-a="dl-docx" data-id="${esc(d.id)}" ${m.accepted ? '' : 'disabled'}>Pobierz Word ze zmianami śledzonymi</button>
+        <button class="btn" data-a="dl-txt" data-id="${esc(d.id)}" ${m.accepted ? '' : 'disabled'}>Pobierz tekst po zmianach</button>
+        <button class="btn" data-a="copylist" data-id="${esc(d.id)}">Kopiuj listę zmian</button></div>
+      <div class="stack">${d.edits.map(edit).join('') || '<div class="card empty">Brak propozycji.</div>'}</div>
+      ${unl.length ? `<div class="card pad stack" style="margin-top:16px"><h2>Do ręcznego wstawienia</h2><div class="doc small" style="white-space:pre-wrap">${esc(changeList(unl.map((e) => ({ ...e, decision: 'accepted' }))))}</div></div>` : ''}
+      <div class="row" style="margin-top:18px"><button class="btn pri" data-a="draftstatus" data-id="${esc(d.id)}" data-v="accepted" ${d.status === 'accepted' ? 'disabled' : ''}>Zatwierdź szkic</button><button class="btn danger" data-a="draftstatus" data-id="${esc(d.id)}" data-v="rejected" ${d.status === 'rejected' ? 'disabled' : ''}>Odrzuć szkic</button><button class="btn" data-a="regen" data-id="${esc(d.id)}">Wygeneruj ponownie</button></div>
+      <p class="muted small" style="margin-top:12px">Szkic jest propozycją asystenta AI, a nie poradą prawną. Statut zmienia rada pedagogiczna, więc plik z pobrania to materiał do jej uchwały.</p>`;
+  }
+
+  /** Do przeglądu szkicu potrzebny jest aktualny tekst dokumentu. */
+  function ensureDoc(name) {
+    if (S.docCache?.name === name || S.docLoading === name) return;
+    S.docLoading = name;
+    A.getDocument(name).then((row) => { S.docCache = row; }).catch((e) => toast(`Błąd: ${e.message}`, 'err')).finally(() => { S.docLoading = null; render(); });
+  }
+
+  const saveDecisions = async (d, edits, extra = {}) => {
+    await A.updateDraft(d.id, { edits, ...extra });
+    d.edits = edits; Object.assign(d, extra);
+    render();
+  };
+
   /* ---------- render ---------- */
   function render() {
     const { page, arg } = route();
@@ -265,11 +375,12 @@ export function createAdminApp({ api: A, root, defaults, user, logout, sb, now =
     if (S.loading) inner = '<div class="card pad stack"><div class="skeleton" style="width:40%"></div><div class="skeleton" style="width:80%"></div><div class="skeleton" style="width:60%"></div></div>';
     else if (S.error) inner = `<div class="errbox" role="alert">Nie udało się wczytać danych: ${esc(S.error)}</div><p style="margin-top:12px"><button class="btn" data-a="reload">Spróbuj ponownie</button></p>`;
     else {
-      const pages = { '': pDashboard, zmiany: () => (arg ? pDetail(arg) : pChanges()), role: pRoles, zrodla: pSources, priorytety: pRules, linki: pLinks, skany: pRuns, ustawienia: pSettings };
+      const pages = { '': pDashboard, zmiany: () => (arg ? pDetail(arg) : pChanges()), szkice: () => (arg ? pDraft(arg) : pDraftList()), dokumenty: pDocs, role: pRoles, zrodla: pSources, priorytety: pRules, linki: pLinks, skany: pRuns, ustawienia: pSettings };
       inner = (pages[page] ?? pDashboard)();
     }
     const focusId = globalThis.document.activeElement?.id;
     root.innerHTML = shell(inner, NAV.some(([k]) => k === page) ? page : '');
+    if (!S.loading && !S.error && page === 'szkice' && arg) { const dr = S.drafts.find((x) => x.id === arg); if (dr && !['requested', 'failed'].includes(dr.status)) ensureDoc(dr.document_name); }
     if (focusId === 'q') { const q = root.querySelector('#q'); q?.focus(); q?.setSelectionRange(q.value.length, q.value.length); }
   }
 
@@ -300,6 +411,44 @@ export function createAdminApp({ api: A, root, defaults, user, logout, sb, now =
     else if (a === 'dellink') { if (confirm('Usunąć ten link na stałe?')) { await A.deleteLink(d.id); S.links = await A.listLinks(); render(); toast('Link usunięty'); } }
     else if (a === 'copylink') { await globalThis.navigator?.clipboard?.writeText(d.url); toast('Skopiowano link'); }
     else if (a === 'closenew') { S.newLink = null; render(); }
+    else if (a === 'reqdraft') { await A.requestDraft(d.key, d.name); S.drafts = await A.listDrafts(); render(); toast('Szkic zostanie przygotowany przy najbliższym skanie'); }
+    else if (a === 'previewdoc') { S.preview = await A.getDocument(d.name); render(); }
+    else if (a === 'closepreview') { S.preview = null; render(); }
+    else if (a === 'deldocfile') { if (confirm(`Usunąć tekst dokumentu „${d.name}” z biblioteki?`)) { await A.deleteDocument(d.name); S.docs = await A.listDocuments(); S.preview = null; if (S.docCache?.name === d.name) S.docCache = null; render(); toast('Usunięto tekst dokumentu'); } }
+    else if (a === 'decide') {
+      const dr = S.drafts.find((x) => x.id === d.id);
+      await saveDecisions(dr, dr.edits.map((e) => (e.id === d.e && e.located ? { ...e, decision: d.v } : e)));
+    } else if (a === 'acceptall') {
+      const dr = S.drafts.find((x) => x.id === d.id);
+      await saveDecisions(dr, dr.edits.map((e) => (e.located && e.decision === 'pending' ? { ...e, decision: 'accepted' } : e)));
+      toast('Przyjęto wszystkie umiejscowione propozycje');
+    } else if (a === 'draftstatus') {
+      const dr = S.drafts.find((x) => x.id === d.id);
+      await saveDecisions(dr, dr.edits, { status: d.v, reviewed_at: new Date().toISOString() });
+      toast(d.v === 'accepted' ? 'Szkic zatwierdzony' : 'Szkic odrzucony');
+    } else if (a === 'regen') {
+      const dr = S.drafts.find((x) => x.id === d.id);
+      await A.requestDraft(dr.change_key, dr.document_name);
+      S.drafts = await A.listDrafts(); render(); toast('Szkic zostanie przygotowany ponownie przy najbliższym skanie');
+    } else if (a === 'copylist') {
+      const dr = S.drafts.find((x) => x.id === d.id);
+      const picked = dr.edits.some((e) => e.decision === 'accepted') ? 'accepted' : 'pending';
+      await globalThis.navigator?.clipboard?.writeText(changeList(dr.edits.filter((e) => e.located), picked) || changeList(dr.edits, 'pending'));
+      toast('Skopiowano listę zmian');
+    } else if (a === 'dl-txt' || a === 'dl-docx') {
+      const dr = S.drafts.find((x) => x.id === d.id);
+      const doc = S.docCache?.name === dr.document_name ? S.docCache : await A.getDocument(dr.document_name);
+      if (!doc) return toast('Dokument nie jest już w bibliotece', 'err');
+      if (!resolveEdits(doc.content, dr.edits).length) return toast('Najpierw przyjmij przynajmniej jedną zmianę', 'err');
+      const base = `${dr.document_name} (szkic zmian)`;
+      if (a === 'dl-txt') downloadBlob(new Blob([textAfter(doc.content, dr.edits)], { type: 'text/plain;charset=utf-8' }), `${base}.txt`);
+      else {
+        const lib = await loaders.docx();
+        const document = buildDocxDocument(lib, buildSegments(doc.content, dr.edits), { title: base, date: now().toISOString() });
+        downloadBlob(await lib.Packer.toBlob(document), `${base}.docx`);
+      }
+      toast('Pobrano plik');
+    }
     else if (a === 'resetcfg') { if (confirm('Przywrócić ustawienia domyślne? Tej operacji nie można cofnąć.')) { await A.resetConfig(); S.cfg = deepClone(defaults); render(); toast('Przywrócono ustawienia domyślne'); } }
   }));
 
@@ -346,6 +495,11 @@ export function createAdminApp({ api: A, root, defaults, user, logout, sb, now =
       await saveCfg((c) => { c.school = { ...c.school, name: str('name'), profile: str('profile') }; }, 'Zapisano dane placówki');
     } else if (name === 'adddoc') {
       await saveCfg((c) => { c.documents.push({ name: str('name'), needsCouncil: f.get('council') === 'on' }); }, 'Dodano dokument');
+    } else if (name === 'savedoc') {
+      const content = String(f.get('content') ?? '').trim();
+      if (!content) return toast('Wklej tekst dokumentu', 'err');
+      await A.saveDocument({ name: form.dataset.name, content });
+      S.docs = await A.listDocuments(); S.docCache = null; render(); toast('Zapisano dokument');
     } else if (name === 'password') {
       const { error } = await sb.auth.updateUser({ password: String(f.get('pw')) });
       if (error) return toast(`Błąd: ${error.message}`, 'err');
@@ -357,6 +511,14 @@ export function createAdminApp({ api: A, root, defaults, user, logout, sb, now =
     const t = e.target;
     const c = t.dataset?.c;
     if (!c) return;
+    if (c === 'docfile') {
+      const file = t.files?.[0];
+      if (!file) return;
+      const content = await readDocumentFile(file, { loadMammoth: loaders.mammoth });
+      await A.saveDocument({ name: t.dataset.name, content });
+      S.docs = await A.listDocuments(); S.docCache = null; render();
+      return toast(`Wgrano dokument (${content.length} znaków)`);
+    }
     if (c === 'src') await saveCfg((cfg) => { cfg.sources.find((s) => s.id === t.dataset.id).enabled = t.checked; }, t.checked ? 'Źródło włączone' : 'Źródło wyłączone');
     else if (c === 'rule') await saveCfg((cfg) => { cfg.rules.find((r) => r.id === t.dataset.id).on = t.checked; }, 'Zapisano regułę');
     else if (c === 'prio') await saveCfg((cfg) => { cfg.rules.find((r) => r.id === t.dataset.id).prio = t.value; }, 'Zmieniono priorytet reguły');

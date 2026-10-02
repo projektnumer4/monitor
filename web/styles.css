@@ -216,3 +216,10 @@ textarea{background:var(--surface);border:1px solid var(--line);border-radius:10
 .chk{display:inline-flex;gap:8px;align-items:center;font-size:13px;color:var(--muted)}
 .done-task{opacity:.55;text-decoration:line-through}
 @media print{.side,.top .btn{display:none}.shell{display:block}.card{box-shadow:none;background:#fff}}
+
+.status.requested{background:var(--accent-soft);color:var(--accent)}
+.status.ready{background:var(--mid-soft);color:var(--mid)}
+.status.no_changes{background:var(--surface2);color:var(--muted)}
+.status.failed{background:var(--hi-soft);color:var(--hi)}
+.doc{white-space:pre-wrap}
+input[type=file]{width:100%;padding:8px;background:var(--surface);border:1px dashed var(--line);border-radius:10px}

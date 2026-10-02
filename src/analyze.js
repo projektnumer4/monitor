@@ -34,6 +34,7 @@ const TOOL = {
       legal_basis: { type: 'string', description: 'Tytuł aktu i przepisy, na które się powołujesz (tylko te, które widzisz w tekście).' },
       confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
       review_note: { type: ['string', 'null'], description: 'Co człowiek powinien sprawdzić ręcznie, albo null.' },
+      act_excerpt: { type: 'string', description: 'Najważniejsze przepisy aktu istotne dla szkoły, cytowane DOSŁOWNIE z dostarczonego tekstu (maks. ok. 3500 znaków). Pusty tekst, gdy tekstu aktu brak.' },
     },
     required: ['relevant', 'relevance_reason', 'summary', 'what_changes', 'affects_school', 'status', 'requires_statute_change', 'requires_council_resolution', 'documents_to_update', 'roles', 'legal_basis', 'confidence'],
   },
@@ -44,7 +45,8 @@ const JSON_INSTRUCTION = `Odpowiedz WYŁĄCZNIE jednym obiektem JSON (bez koment
  "affects_school": "yes"|"maybe"|"no", "status": "obowiazuje"|"projekt"|"wytyczne"|"informacja",
  "effective_date": "RRRR-MM-DD"|null, "requires_statute_change": true|false, "requires_council_resolution": true|false,
  "documents_to_update": ["nazwa z listy"], "roles": [{"role": "nazwa z listy", "action": "...", "deadline": "RRRR-MM-DD"|null}],
- "legal_basis": "...", "confidence": "high"|"medium"|"low", "review_note": "..."|null}`;
+ "legal_basis": "...", "confidence": "high"|"medium"|"low", "review_note": "..."|null,
+ "act_excerpt": "najważniejsze przepisy cytowane dosłownie z tekstu aktu, maks. ok. 3500 znaków, albo pusty tekst"}`;
 
 export function buildSystemPrompt(cfg, mode = 'tool') {
   const roles = cfg.roles.map((r) => `- ${r.name}: ${r.scope}`).join('\n');
@@ -142,6 +144,7 @@ export function normalizeAnalysis(raw, cfg) {
     legal_basis: String(raw.legal_basis ?? '').trim(),
     confidence: pick(raw.confidence, ['high', 'medium', 'low'], 'low'),
     review_note: raw.review_note ? String(raw.review_note) : (dropped.length ? `Pominięto: ${dropped.join('; ')}` : null),
+    act_excerpt: String(raw.act_excerpt ?? '').trim().slice(0, 6000),
   };
 }
 
@@ -153,7 +156,7 @@ export function createClaudeAnalyzer({ apiKey, model = process.env.ANTHROPIC_MOD
     async analyze(c, t, _score, cfg, today) {
       const body = {
         model,
-        max_tokens: 2000,
+        max_tokens: 4000,
         system: buildSystemPrompt(cfg),
         tools: [TOOL],
         tool_choice: { type: 'tool', name: TOOL.name },

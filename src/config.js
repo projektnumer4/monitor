@@ -3,7 +3,7 @@
  * Ustawienia z panelu mają pierwszeństwo, ale źródła i reguły łączymy po identyfikatorze, dzięki czemu nowe źródła
  * dodane w przyszłych wersjach kodu pojawią się u Ciebie same (chyba że usunąłeś je w panelu).
  */
-const MERGE_OBJECTS = ['school', 'schedule', 'filter', 'report'];
+const MERGE_OBJECTS = ['school', 'schedule', 'filter', 'report', 'drafts'];
 const REPLACE = ['roles', 'documents', 'watchedActs', 'keywords'];
 
 export function validateConfig(o) {

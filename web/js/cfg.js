@@ -1,6 +1,6 @@
 // Łączenie ustawień z panelu z domyślnymi. Musi działać identycznie jak src/config.js po stronie silnika
 // (test web/test/cfg-parity.test.js pilnuje zgodności).
-const MERGE_OBJECTS = ['school', 'schedule', 'filter', 'report'];
+const MERGE_OBJECTS = ['school', 'schedule', 'filter', 'report', 'drafts'];
 const REPLACE = ['roles', 'documents', 'watchedActs', 'keywords'];
 const byId = (list) => new Map((list ?? []).map((x) => [x.id, x]));
 

@@ -37,6 +37,8 @@ export function fakeSupabase(opts = {}) {
     runs: opts.runs ?? [{ run_date: '2026-10-02', status: 'ok', summary: { reviewed: 12, changes: 3, health: [{ id: 'eli-du', name: 'Dziennik Ustaw', ok: true, listed: 9, fresh: 2 }, { id: 'rcl', name: 'RCL', ok: false, error: 'zmiana układu', listed: 0 }] } }],
     settings: opts.settings ?? [],
     access_links: opts.links ?? [],
+    school_documents: opts.documents ?? [],
+    document_drafts: opts.drafts ?? [],
   };
   const calls = [];
   let session = opts.session === undefined ? null : opts.session;
@@ -55,7 +57,13 @@ export function fakeSupabase(opts = {}) {
       }
       if (q.op === 'update') { rows.filter(match).forEach((r) => Object.assign(r, q.payload)); return { data: rows.filter(match), error: null }; }
       if (q.op === 'insert') { const r = { id: `id${rows.length + 1}`, created_at: new Date().toISOString(), revoked: false, last_used_at: null, ...q.payload }; rows.push(r); return { data: [r], error: null }; }
-      if (q.op === 'upsert') { const i = rows.findIndex((r) => r.key === q.payload.key); if (i >= 0) rows[i] = q.payload; else rows.push(q.payload); return { data: [q.payload], error: null }; }
+      if (q.op === 'upsert') {
+        const cols = String(q.onConflict || 'key').split(',');
+        const i = rows.findIndex((r) => cols.every((c) => r[c] === q.payload[c]));
+        if (i >= 0) rows[i] = { ...rows[i], ...q.payload };
+        else rows.push({ id: `id${rows.length + 1}`, ...q.payload });
+        return { data: [q.payload], error: null };
+      }
       if (q.op === 'delete') { db[table] = rows.filter((r) => !match(r)); return { data: null, error: null }; }
       return { data: null, error: null };
     };
@@ -64,7 +72,7 @@ export function fakeSupabase(opts = {}) {
       eq(c, v) { q.filters.push([c, v]); return b; },
       update(p) { q.op = 'update'; q.payload = p; return b; },
       insert(p) { q.op = 'insert'; q.payload = p; return b; },
-      upsert(p) { q.op = 'upsert'; q.payload = p; return b; },
+      upsert(p, o) { q.op = 'upsert'; q.payload = p; q.onConflict = o?.onConflict; return b; },
       delete() { q.op = 'delete'; return b; },
       then(res, rej) { try { return Promise.resolve(run()).then(res, rej); } catch (e) { return Promise.reject(e); } },
     };

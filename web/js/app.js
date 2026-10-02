@@ -5,7 +5,7 @@ import { renderUserView } from './user.js';
 import { esc } from './util.js';
 
 /** Punkt wejścia aplikacji. Wydzielony z main.js, żeby można go było testować bez przeglądarki. */
-export async function startApp({ sb, root, defaults, now = () => new Date() }) {
+export async function startApp({ sb, root, defaults, now = () => new Date(), loaders }) {
   const A = makeApi(sb);
   const m = (globalThis.location.hash || '').match(/^#\/r\/([A-Za-z0-9_-]+)$/);
   if (m) return renderUserView({ api: A, root, token: m[1], now });
@@ -13,7 +13,7 @@ export async function startApp({ sb, root, defaults, now = () => new Date() }) {
   const auth = runAuth({
     sb, root, api: A,
     onReady: async ({ user, logout }) => {
-      const app = createAdminApp({ api: A, root, defaults, user, logout, sb, now });
+      const app = createAdminApp({ api: A, root, defaults, user, logout, sb, now, ...(loaders ? { loaders } : {}) });
       await app.start();
     },
   });

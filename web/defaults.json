@@ -310,5 +310,14 @@
   ],
   "report": {
     "sendWhenEmpty": true
+  },
+  "drafts": {
+    "auto": true,
+    "autoMinPriority": "mid",
+    "skipStatuses": [
+      "projekt",
+      "informacja"
+    ],
+    "maxPerRun": 6
   }
 }

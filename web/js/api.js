@@ -48,6 +48,33 @@ export const api = (sb) => ({
     return must(await sb.from('access_links').delete().eq('id', id));
   },
 
+  /* biblioteka dokumentów szkoły */
+  async listDocuments() {
+    return must(await sb.from('school_documents').select('name,chars,content_hash,updated_at').order('name', { ascending: true })) ?? [];
+  },
+  async getDocument(name) {
+    const rows = must(await sb.from('school_documents').select('*').eq('name', name).limit(1)) ?? [];
+    return rows[0] ?? null;
+  },
+  async saveDocument({ name, content }) {
+    const content_hash = await sha256Hex(content);
+    return must(await sb.from('school_documents').upsert({ name, content, chars: content.length, content_hash, updated_at: new Date().toISOString() }, { onConflict: 'name' }));
+  },
+  async deleteDocument(name) {
+    return must(await sb.from('school_documents').delete().eq('name', name));
+  },
+
+  /* szkice */
+  async listDrafts() {
+    return must(await sb.from('document_drafts').select('*').order('requested_at', { ascending: false }).limit(200)) ?? [];
+  },
+  async requestDraft(change_key, document_name) {
+    return must(await sb.from('document_drafts').upsert({ change_key, document_name, status: 'requested', error: null, requested_at: new Date().toISOString() }, { onConflict: 'change_key,document_name' }));
+  },
+  async updateDraft(id, patch) {
+    return must(await sb.from('document_drafts').update(patch).eq('id', id).select());
+  },
+
   async roleView(token) {
     return must(await sb.rpc('get_role_view', { p_token: token }));
   },

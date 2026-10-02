@@ -7,6 +7,8 @@ import { createStore } from './store/index.js';
 import { runScan } from './pipeline.js';
 import { buildSources } from './sources/index.js';
 import { mergeConfig, validateConfig } from './config.js';
+import { createJsonLlm } from './llm.js';
+import { runDrafts } from './drafts.js';
 
 const args = process.argv.slice(2);
 const cmd = args[0] ?? 'scan';
@@ -47,8 +49,10 @@ async function scan() {
     log(`UWAGA: nie udało się odczytać ustawień z panelu (${e.message}), używam domyślnych`);
   }
 
+  const llm = mockAi ? null : createJsonLlm({ http: realHttp });
   const result = await runScan({
     cfg, http, store, analyzer, mailer,
+    drafter: () => runDrafts({ store, llm, cfg, log }),
     now: opt('now') ? new Date(opt('now')) : new Date(),
     force: flag('force'),
     appUrl: process.env.APP_URL || '',
@@ -62,6 +66,20 @@ async function scan() {
     // Gdy WSZYSTKIE źródła zawiodły, kończymy błędem, żeby GitHub pokazał czerwony przebieg.
     if (bad.length === result.health.length) process.exitCode = 1;
   }
+}
+
+/** Przetwarza prośby o szkice z panelu (i tworzy brakujące szkice automatyczne) bez uruchamiania skanu. */
+async function drafts() {
+  const baseCfg = await loadConfig();
+  const realHttp = createHttp();
+  const store = createStore({ dryRun: flag('dry-run'), http: realHttp });
+  let cfg = baseCfg;
+  const override = await store.getConfig?.();
+  if (override && !validateConfig(override).length) cfg = mergeConfig(baseCfg, override);
+  const llm = createJsonLlm({ http: realHttp });
+  const r = await runDrafts({ store, llm, cfg, log });
+  log(`Szkice: utworzono ${r.created.length}, błędów ${r.failed}, pominięto ${r.skipped}.`);
+  if (r.failed && !r.created.length) process.exitCode = 1;
 }
 
 /** Sprawdza konfigurację i dostępność źródeł. Warto uruchomić raz przed pierwszym skanem. */
@@ -95,9 +113,9 @@ async function verify() {
   }
 }
 
-const commands = { scan, verify };
+const commands = { scan, verify, drafts };
 if (!commands[cmd]) {
-  log('Użycie: node src/cli.js <scan|verify> [--dry-run] [--force] [--fixtures=katalog] [--now=ISO] [--mock-ai]');
+  log('Użycie: node src/cli.js <scan|drafts|verify> [--dry-run] [--force] [--fixtures=katalog] [--now=ISO] [--mock-ai]');
   process.exit(2);
 }
 commands[cmd]().catch((e) => {

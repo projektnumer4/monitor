@@ -9,7 +9,7 @@ import { renderReport } from './report.js';
  * Jeden przebieg: pobierz nowe akty -> odfiltruj -> przeanalizuj -> nadaj priorytet -> zapisz -> wyślij raport.
  * Raport powstaje z zapisanych zmian danego dnia, więc ponowienie po nieudanej wysyłce nic nie gubi.
  */
-export async function runScan({ cfg, http, store, analyzer, mailer, now = new Date(), force = false, appUrl = '', log = () => {} }) {
+export async function runScan({ cfg, http, store, analyzer, mailer, drafter = null, now = new Date(), force = false, appUrl = '', log = () => {} }) {
   const local = localParts(now, cfg.school.timezone);
   const today = local.date;
 
@@ -92,6 +92,7 @@ export async function runScan({ cfg, http, store, analyzer, mailer, now = new Da
             legal_basis: a.legal_basis,
             confidence: a.confidence,
             review_note: a.review_note,
+            act_excerpt: a.act_excerpt || null,
             run_date: today,
           };
           await store.saveChange(change);
@@ -114,10 +115,16 @@ export async function runScan({ cfg, http, store, analyzer, mailer, now = new Da
 
   await store.markSeen(toMark);
 
+  // Szkice dokumentów powstają przed raportem, żeby raport mógł o nich wspomnieć. Awaria szkiców nie blokuje raportu.
+  let drafts = null;
+  if (drafter) {
+    try { drafts = await drafter(); } catch (e) { log(`UWAGA: generowanie szkiców nie powiodło się: ${e.message}`); drafts = { created: [], failed: 0, error: e.message }; }
+  }
+
   const changes = await store.listByRunDate(today);
   const upcoming = (await store.listUpcoming(today, addDays(today, cfg.schedule.upcomingDays)))
     .filter((c) => c.run_date !== today);
-  const report = renderReport({ cfg, today, changes, upcoming, health, stats: { reviewed, sources: sources.length }, appUrl });
+  const report = renderReport({ cfg, today, changes, upcoming, health, stats: { reviewed, sources: sources.length }, appUrl, drafts });
 
   if (changes.length || cfg.report.sendWhenEmpty || health.some((h) => !h.ok)) {
     await mailer.send(report);

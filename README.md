@@ -12,6 +12,17 @@ GitHub Actions (cron) -> źródła -> filtr słów kluczowych -> analiza AI -> r
 ## Panel admina
 Folder `web/` to panel z logowaniem (hasło + 2FA) i widokiem dla pracowników z linków. Instrukcja uruchomienia: `SETUP-PANEL.md`.
 
+## Szkice dokumentów
+1. W panelu (Dokumenty szkoły) wgrywasz tekst statutu i procedur (.docx, .txt, .md albo wklejony tekst). **Bez danych osobowych.**
+2. Gdy skan wykryje zmianę prawa, która wymaga zmiany takiego dokumentu, silnik prosi model o propozycje zmian.
+   Każdy cytowany fragment dokumentu jest sprawdzany w prawdziwym tekście: propozycje, których nie da się odnaleźć dokładnie raz, są oznaczane jako „do ręcznego wstawienia” i nie trafiają do pliku.
+3. W panelu (Szkice dokumentów) przyjmujesz lub odrzucasz każdą zmianę i pobierasz Word ze zmianami śledzonymi (w:ins / w:del) albo tekst po zmianach.
+4. Szkice powstają automatycznie przy dziennym skanie (domyślnie dla zmian o priorytecie wysokim i średnim, nie dla projektów aktów; max 6 na przebieg, ustawienia w `drafts` w konfiguracji).
+   Prośbę o szkic możesz zgłosić ręcznie w panelu, a przyspieszyć ją workflow **Szkice dokumentów** w Actions.
+
+Wymaga trybu `gemini` lub `claude` (tryb `rules` nie generuje szkiców). Plik Word ze szkicem to **tekstowa wersja dokumentu** ze śledzonymi zmianami:
+nie zachowuje formatowania oryginału (style, numeracja automatyczna, tabele), więc traktuj go jako materiał do przeniesienia zmian do oryginalnego pliku.
+
 ## Źródła
 
 | Źródło | Co daje | Jak | Wiarygodność |
@@ -102,7 +113,7 @@ Zadania GitHuba mogą się opóźniać, co w oknie kilku godzin nie ma znaczenia
 
 ## Co jest sprawdzone, a co nie
 
-Sprawdzone testami (`npm test`, 84 testy, w tym panelu w symulowanej przeglądarce): straż czasu w lecie i zimie, filtr, reguły priorytetów, parsowanie ELI i RSS,
+Sprawdzone testami (`npm test`, 108 testów, w tym panelu w symulowanej przeglądarce): straż czasu w lecie i zimie, filtr, reguły priorytetów, parsowanie ELI i RSS,
 odporność na awarię źródła, idempotencja (dwa uruchomienia w tym samym dniu), ponowienie po nieudanej wysyłce,
 kształt żądania do API Claude, escapowanie treści w e-mailu.
 
@@ -117,5 +128,4 @@ kształt żądania do API Claude, escapowanie treści w e-mailu.
 - Ustawa o bardzo długim tekście jest obcinana do ok. 70 tys. znaków (raport zaznacza to w „Do sprawdzenia”).
 - Akty bez słów kluczowych w tytule i bez odwołania do aktów obserwowanych mogą zostać pominięte.
   Rozszerzaj `keywords` i `watchedActs`, gdy zauważysz lukę.
-- Nie ma jeszcze: generowania szkiców dokumentów.
 - Panel admina i linki dla pracowników: zob. `SETUP-PANEL.md`.
