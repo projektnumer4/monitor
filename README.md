@@ -57,6 +57,20 @@ Wypisze, czy klucze są ustawione, czy akty obserwowane mają oczekiwane tytuły
 Potem w GitHubie: Actions -> „Dzienny skan prawa” -> **Run workflow**. Pierwszy skan obejmuje ostatnie 7 dni
 (`schedule.lookbackDays`), więc raport może być dłuższy niż zwykle.
 
+## Analiza AI: trzy tryby (wybierasz zmienną `AI_PROVIDER`)
+
+| `AI_PROVIDER` | Koszt | Co potrzeba | Jakość |
+|---|---|---|---|
+| `gemini` | darmowy poziom Google AI Studio (bez karty) | sekret `GEMINI_API_KEY` | pełne streszczenia i przypisania ról |
+| `claude` | płatny (grosze za akt) | sekret `ANTHROPIC_API_KEY` z konsoli API i saldo | pełne streszczenia i przypisania ról |
+| `rules` | 0 zł, bez żadnego klucza | nic | tylko dopasowanie słów kluczowych i terminy z metadanych, bez streszczeń |
+
+Gdy `AI_PROVIDER` jest puste, silnik wybiera sam: Gemini (jeśli jest klucz), potem Claude, na końcu `rules`.
+Model Gemini zmienisz zmienną `GEMINI_MODEL` (domyślnie `gemini-3.5-flash`). Nie włączaj płatności w Google Cloud:
+bez niej przekroczenie darmowego limitu kończy się błędem 429, nie opłatą.
+Darmowy poziom Google może wykorzystywać wysyłane treści do ulepszania produktów, dlatego do analizy trafiają wyłącznie
+publiczne akty prawne, nigdy dokumenty szkoły ani dane osób.
+
 ## Jak to się układa w czasie
 
 Workflow ma dwa wpisy cron w UTC (15:30 i 16:30). Skrypt sprawdza czas w `Europe/Warsaw`, uruchamia się tylko w oknie
@@ -71,7 +85,7 @@ Zadania GitHuba mogą się opóźniać, co w oknie kilku godzin nie ma znaczenia
 
 ## Co jest sprawdzone, a co nie
 
-Sprawdzone testami (`npm test`, 34 testy): straż czasu w lecie i zimie, filtr, reguły priorytetów, parsowanie ELI i RSS,
+Sprawdzone testami (`npm test`, 42 testy): straż czasu w lecie i zimie, filtr, reguły priorytetów, parsowanie ELI i RSS,
 odporność na awarię źródła, idempotencja (dwa uruchomienia w tym samym dniu), ponowienie po nieudanej wysyłce,
 kształt żądania do API Claude, escapowanie treści w e-mailu.
 

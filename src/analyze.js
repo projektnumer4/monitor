@@ -39,7 +39,14 @@ const TOOL = {
   },
 };
 
-export function buildSystemPrompt(cfg) {
+const JSON_INSTRUCTION = `Odpowiedz WYŁĄCZNIE jednym obiektem JSON (bez komentarzy i bez bloku kodu) o dokładnie takich polach:
+{"relevant": true|false, "relevance_reason": "...", "summary": "...", "what_changes": "...",
+ "affects_school": "yes"|"maybe"|"no", "status": "obowiazuje"|"projekt"|"wytyczne"|"informacja",
+ "effective_date": "RRRR-MM-DD"|null, "requires_statute_change": true|false, "requires_council_resolution": true|false,
+ "documents_to_update": ["nazwa z listy"], "roles": [{"role": "nazwa z listy", "action": "...", "deadline": "RRRR-MM-DD"|null}],
+ "legal_basis": "...", "confidence": "high"|"medium"|"low", "review_note": "..."|null}`;
+
+export function buildSystemPrompt(cfg, mode = 'tool') {
   const roles = cfg.roles.map((r) => `- ${r.name}: ${r.scope}`).join('\n');
   const docs = cfg.documents.map((d) => `- ${d.name}${d.needsCouncil ? ' (zmiana wymaga uchwały rady pedagogicznej)' : ''}`).join('\n');
   return `Jesteś asystentem dyrektora placówki oświatowej i oceniasz, jak nowy akt prawny wpływa na szkołę.
@@ -61,7 +68,7 @@ ZASADY:
 5. Zadania dla ról mają być konkretne i wykonalne ("zaktualizować wzór karty oceny do 1 marca"), nie ogólne ("zapoznać się"). Przypisuj tylko role, których zmiana naprawdę dotyczy.
 6. Streszczenie pisz po polsku, prostym językiem, bez żargonu prawniczego tam, gdzie się da.
 7. Rozróżnij status: obowiazuje (opublikowany akt), projekt (konsultacje, prace legislacyjne), wytyczne (pisma i wytyczne organów), informacja (komunikat bez nowych obowiązków).
-Odpowiedz wywołując narzędzie report_analysis.`;
+${mode === 'json' ? JSON_INSTRUCTION : 'Odpowiedz wywołując narzędzie report_analysis.'}`;
 }
 
 function buildUserContent(c, t, today) {
@@ -207,4 +214,112 @@ export function createMockAnalyzer() {
       }, cfg);
     },
   };
+}
+
+/** Wyciąga obiekt JSON z odpowiedzi modelu (toleruje ogrodzenia ``` i tekst wokół). */
+export function parseJsonLoose(text) {
+  const cleaned = String(text).replace(/```(?:json)?/gi, '');
+  const a = cleaned.indexOf('{');
+  const b = cleaned.lastIndexOf('}');
+  if (a < 0 || b <= a) throw new Error('Odpowiedź modelu nie zawiera obiektu JSON');
+  return JSON.parse(cleaned.slice(a, b + 1));
+}
+
+/**
+ * Analizator Google Gemini. Ma darmowy poziom w Google AI Studio (klucz bez karty płatniczej).
+ * Limity darmowego poziomu bywają niskie, więc analizy są rozłożone w czasie (minIntervalMs).
+ */
+export function createGeminiAnalyzer({ apiKey, model = process.env.GEMINI_MODEL || 'gemini-3.5-flash', http, minIntervalMs = 5000 }) {
+  if (!apiKey) throw new Error('Brak GEMINI_API_KEY');
+  let last = 0;
+  return {
+    name: `gemini:${model}`,
+    async analyze(c, t, _score, cfg, today) {
+      const wait = last + minIntervalMs - Date.now();
+      if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+      last = Date.now();
+
+      const parts = buildUserContent(c, t, today).map((b) =>
+        b.type === 'document' ? { inlineData: { mimeType: 'application/pdf', data: b.source.data } } : { text: b.text });
+      const body = {
+        systemInstruction: { parts: [{ text: buildSystemPrompt(cfg, 'json') }] },
+        contents: [{ role: 'user', parts }],
+        generationConfig: { responseMimeType: 'application/json', temperature: 0.2, maxOutputTokens: 8192 },
+      };
+      const res = await http.request(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      const cand = data.candidates?.[0];
+      const text = (cand?.content?.parts ?? []).map((p) => p.text ?? '').join('');
+      if (!text) throw new Error(`Gemini nie zwrócił wyniku (${data.promptFeedback?.blockReason || cand?.finishReason || 'brak odpowiedzi'})`);
+      const a = normalizeAnalysis(parseJsonLoose(text), cfg);
+      if (t.kind === 'none' && a.confidence === 'high') a.confidence = 'low';
+      if (t.truncated && !a.review_note) a.review_note = 'Tekst aktu został obcięty do limitu, sprawdź pełną treść.';
+      return a;
+    },
+  };
+}
+
+const ROLE_HINTS = [
+  [/logoped|terapi/, 'Logopeda'],
+  [/psycholog|pomocy psychologiczno/, 'Psycholog'],
+  [/orzeczeni|ipet|rewalidac|kształcenia specjaln|pedagog specjaln/, 'Pedagog specjalny'],
+  [/zawod|praktyczn/, 'Nauczyciel zawodu'],
+  [/internat|wychowank/, 'Wychowawca internatu'],
+  [/dostępności cyfrowej|informacji publicznej|\bsio\b|\bbip\b|informacji oświatowej/, 'Sekretarz'],
+  [/danych osobowych|rodo/, 'IOD'],
+  [/bhp|bezpieczeństwa i higieny/, 'Specjalista BHP'],
+  [/wynagrodz|czas pracy|karta nauczyciela|pracownik/, 'Kadry'],
+  [/finans|budżet|dotacj/, 'Główny księgowy'],
+];
+
+/**
+ * Tryb bez AI i bez żadnych kosztów: ocena wyłącznie na podstawie słów kluczowych i metadanych.
+ * Nie streszcza aktów, więc raport jest uboższy, ale nic nie kosztuje i nie wymaga żadnego klucza.
+ */
+export function createRulesAnalyzer() {
+  return {
+    name: 'rules (bez AI)',
+    async analyze(c, _t, score, cfg) {
+      const title = c.title.toLowerCase();
+      const roles = [{ role: 'Dyrektor', action: 'Zapoznać się z aktem i ocenić jego wpływ na placówkę.', deadline: null }];
+      for (const [re, role] of ROLE_HINTS) {
+        if (re.test(title) && !roles.some((r) => r.role === role)) {
+          roles.push({ role, action: 'Sprawdzić w treści aktu, czy zmiana dotyczy Twoich zadań.', deadline: null });
+        }
+      }
+      const strong = score.reasons.some((r) => r.startsWith('organ wydający') || r.startsWith('zmienia:'));
+      const status = c.kind === 'news' ? (/projekt/.test(title) ? 'projekt' : 'informacja') : c.type === 'Obwieszczenie' ? 'informacja' : 'obowiazuje';
+      const lead = [c.display ?? c.sourceName, c.title].filter(Boolean).join(': ');
+      return normalizeAnalysis({
+        relevant: true,
+        relevance_reason: 'Dopasowanie według słów kluczowych (tryb bez AI).',
+        summary: c.summary ? `${lead}. ${c.summary.slice(0, 300)}` : lead,
+        what_changes: `Ocena bez AI: akt dopasowano do placówki według reguł (${score.reasons.join('; ')}). Przeczytaj jego treść w źródle.`,
+        affects_school: strong ? 'yes' : 'maybe',
+        status,
+        effective_date: c.effectiveDate ?? null,
+        requires_statute_change: false,
+        requires_council_resolution: false,
+        documents_to_update: [],
+        roles,
+        legal_basis: c.display ?? '',
+        confidence: 'low',
+        review_note: 'Raport bez analizy AI: streszczenie i przypisanie ról są orientacyjne.',
+      }, cfg);
+    },
+  };
+}
+
+/** Wybór analizatora: AI_PROVIDER (gemini | claude | rules) albo automatycznie według dostępnych kluczy. */
+export function createAnalyzerFromEnv({ env = process.env, http }) {
+  const provider = (env.AI_PROVIDER || '').toLowerCase()
+    || (env.GEMINI_API_KEY ? 'gemini' : env.ANTHROPIC_API_KEY ? 'claude' : 'rules');
+  if (provider === 'gemini') return createGeminiAnalyzer({ apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MODEL || undefined, http });
+  if (provider === 'claude') return createClaudeAnalyzer({ apiKey: env.ANTHROPIC_API_KEY, model: env.ANTHROPIC_MODEL || undefined, http });
+  if (provider === 'rules') return createRulesAnalyzer();
+  throw new Error(`Nieznany AI_PROVIDER: ${provider} (dozwolone: gemini, claude, rules)`);
 }

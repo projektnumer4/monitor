@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createHttp, createFixtureHttp } from './http.js';
-import { createClaudeAnalyzer, createMockAnalyzer } from './analyze.js';
+import { createAnalyzerFromEnv, createMockAnalyzer } from './analyze.js';
 import { createResendMailer, createFileMailer } from './mail.js';
 import { createStore } from './store/index.js';
 import { runScan } from './pipeline.js';
@@ -27,7 +27,7 @@ async function scan() {
   const realHttp = createHttp();
 
   const mockAi = flag('mock-ai');
-  const analyzer = mockAi ? createMockAnalyzer() : createClaudeAnalyzer({ apiKey: process.env.ANTHROPIC_API_KEY, http: realHttp });
+  const analyzer = mockAi ? createMockAnalyzer() : createAnalyzerFromEnv({ http: realHttp });
   const mailer = dryRun
     ? createFileMailer(opt('out') || 'out')
     : createResendMailer({ apiKey: process.env.RESEND_API_KEY, from: process.env.REPORT_FROM, to: process.env.REPORT_TO, http: realHttp });
@@ -56,7 +56,7 @@ async function verify() {
   const http = createHttp();
   const env = (k) => (process.env[k] ? 'ustawiona' : 'BRAK');
   log('Zmienne środowiskowe:');
-  for (const k of ['ANTHROPIC_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'RESEND_API_KEY', 'REPORT_FROM', 'REPORT_TO']) log(`  ${k}: ${env(k)}`);
+  for (const k of ['AI_PROVIDER', 'GEMINI_API_KEY', 'ANTHROPIC_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'RESEND_API_KEY', 'REPORT_FROM', 'REPORT_TO']) log(`  ${k}: ${env(k)}`);
 
   log('\nAkty obserwowane (sprawdź, czy tytuły się zgadzają):');
   for (const w of cfg.watchedActs) {
