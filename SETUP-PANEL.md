@@ -22,14 +22,14 @@ Pracownicy wchodzą bez logowania przez osobne linki, tylko do odczytu. Koszt: 0
 
 ## 2. Dane połączenia w repozytorium
 
-W GitHubie otwórz `web/config.js`, kliknij ołówek i wpisz:
+W GitHubie otwórz `web/config.js` (jeśli go nie ma, utwórz go: Add file → Create new file → `web/config.js`, zawartość wg `web/config.example.js`), kliknij ołówek i wpisz:
 ```js
 window.APP_CONFIG = {
   supabaseUrl: 'https://TWOJ-ID.supabase.co',
   supabaseAnonKey: 'eyJ... albo sb_publishable_...',
 };
 ```
-Te dwie wartości są publiczne z założenia. Bezpieczeństwo zapewnia 2FA i reguły w bazie. Jeśli wkleisz klucz tajny, panel odmówi działania.
+**Paczka ZIP nie zawiera pliku `web/config.js`, więc kolejne wgrania kodu nie nadpiszą Twoich danych.** Te dwie wartości są publiczne z założenia. Bezpieczeństwo zapewnia 2FA i reguły w bazie. Jeśli wkleisz klucz tajny, panel odmówi działania.
 
 ## 3. Hosting: Cloudflare Pages (ok. 10 minut)
 
@@ -68,7 +68,7 @@ Silnik czyta je przy każdym skanie i stosuje zamiast ustawień z pliku `config/
 
 | Objaw | Przyczyna i rozwiązanie |
 |---|---|
-| Ekran „Panel wymaga konfiguracji” | `web/config.js` jest pusty albo zawiera klucz tajny (krok 2) |
+| Ekran „Panel wymaga konfiguracji” | `web/config.js` jest pusty albo zawiera klucz tajny (krok 2). Otwórz `https://TWOJ-ADRES/config.js` w przeglądarce: jeśli wartości są puste, zmiana nie została jeszcze wdrożona (sprawdź zakładkę Deployments w Cloudflare) albo plik w repo jest nadpisany pustym |
 | „Brak uprawnień” po zalogowaniu | konto nie jest na liście adminów (krok 1.5) |
 | „Nie udało się rozpocząć konfiguracji 2FA” | TOTP wyłączone w Supabase (krok 1.4) |
 | Panel otwiera się, ale „permission denied” | `panel.sql` nie został wykonany albo wykonany w innym projekcie (krok 1.1) |

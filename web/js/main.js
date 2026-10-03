@@ -15,7 +15,8 @@ const cfg = window.APP_CONFIG || {};
 
 try {
   if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {
-    setupScreen(root, 'Brakuje adresu Supabase lub klucza publicznego w pliku config.js.');
+    const missing = [!cfg.supabaseUrl && 'adresu projektu (supabaseUrl)', !cfg.supabaseAnonKey && 'klucza publicznego (supabaseAnonKey)'].filter(Boolean).join(' i ');
+    setupScreen(root, `Serwowany plik config.js nie zawiera ${missing}. Jeśli właśnie go uzupełniłeś, poczekaj minutę na wdrożenie i odśwież stronę (Ctrl+F5). Możesz też otworzyć adres /config.js w przeglądarce i sprawdzić, co jest na serwerze.`);
   } else if (isSecretKey(cfg.supabaseAnonKey)) {
     setupScreen(root, 'W config.js jest klucz tajny (secret/service_role). Natychmiast go usuń i wygeneruj nowy w Supabase. Tu wolno wpisać wyłącznie klucz publiczny.');
   } else {
