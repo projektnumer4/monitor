@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createHttp, createFixtureHttp } from './http.js';
 import { createAnalyzerFromEnv, createMockAnalyzer } from './analyze.js';
-import { createResendMailer, createFileMailer } from './mail.js';
+import { createMailerFromEnv, createFileMailer } from './mail.js';
 import { createStore } from './store/index.js';
 import { runScan } from './pipeline.js';
 import { buildSources } from './sources/index.js';
@@ -33,7 +33,7 @@ async function scan() {
   const analyzer = mockAi ? createMockAnalyzer() : createAnalyzerFromEnv({ http: realHttp });
   const mailer = dryRun
     ? createFileMailer(opt('out') || 'out')
-    : createResendMailer({ apiKey: process.env.RESEND_API_KEY, from: process.env.REPORT_FROM, to: process.env.REPORT_TO, http: realHttp });
+    : createMailerFromEnv({ env: process.env, http: realHttp });
   const store = createStore({ dryRun, http: realHttp });
 
   // Ustawienia z panelu admina (jeśli istnieją) mają pierwszeństwo przed plikiem domyślnym.
@@ -88,7 +88,7 @@ async function verify() {
   const http = createHttp();
   const env = (k) => (process.env[k] ? 'ustawiona' : 'BRAK');
   log('Zmienne środowiskowe:');
-  for (const k of ['AI_PROVIDER', 'GEMINI_API_KEY', 'ANTHROPIC_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'RESEND_API_KEY', 'REPORT_FROM', 'REPORT_TO']) log(`  ${k}: ${env(k)}`);
+  for (const k of ['AI_PROVIDER', 'GEMINI_API_KEY', 'ANTHROPIC_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'BREVO_API_KEY', 'RESEND_API_KEY', 'REPORT_FROM', 'REPORT_TO', 'APP_URL']) log(`  ${k}: ${env(k)}`);
 
   log('\nAkty obserwowane (sprawdź, czy tytuły się zgadzają):');
   for (const w of cfg.watchedActs) {
@@ -113,9 +113,20 @@ async function verify() {
   }
 }
 
-const commands = { scan, verify, drafts };
+/** Wysyła krótką wiadomość próbną na adresy z REPORT_TO. Sprawdza klucz, nadawcę i dostarczalność bez uruchamiania skanu. */
+async function testmail() {
+  const mailer = createMailerFromEnv({ env: process.env, http: createHttp() });
+  await mailer.send({
+    subject: 'Monitor prawa: wiadomość próbna',
+    html: '<p>To jest wiadomość próbna z Monitora prawa oświatowego. Jeśli ją widzisz, wysyłka działa.</p><p>Sprawdź, czy trafiła do skrzynki odbiorczej, a nie do spamu.</p>',
+    text: 'To jest wiadomość próbna z Monitora prawa oświatowego. Jeśli ją widzisz, wysyłka działa. Sprawdź, czy trafiła do skrzynki odbiorczej, a nie do spamu.',
+  });
+  log(`Wysłano wiadomość próbną (usługa: ${mailer.name}) na adresy z REPORT_TO.`);
+}
+
+const commands = { scan, verify, drafts, testmail };
 if (!commands[cmd]) {
-  log('Użycie: node src/cli.js <scan|drafts|verify> [--dry-run] [--force] [--fixtures=katalog] [--now=ISO] [--mock-ai]');
+  log('Użycie: node src/cli.js <scan|drafts|verify|testmail> [--dry-run] [--force] [--fixtures=katalog] [--now=ISO] [--mock-ai]');
   process.exit(2);
 }
 commands[cmd]().catch((e) => {

@@ -35,6 +35,7 @@ export function createSupabaseStore({ url, serviceKey, http }) {
       }
       return found;
     },
+    async listRecipients() { return get('recipients', 'status=eq.active&select=id,name,email,roles,status,unsub_token'); },
     async listDocuments() { return get('school_documents', 'select=name,content,chars,content_hash,updated_at'); },
     async listDrafts() { return get('document_drafts', 'select=id,change_key,document_name,status'); },
     async saveDraft(d) { await upsert('document_drafts', [d], 'change_key,document_name'); },

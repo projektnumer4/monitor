@@ -12,6 +12,9 @@ GitHub Actions (cron) -> źródła -> filtr słów kluczowych -> analiza AI -> r
 ## Panel admina
 Folder `web/` to panel z logowaniem (hasło + 2FA) i widokiem dla pracowników z linków. Instrukcja uruchomienia: `SETUP-PANEL.md`.
 
+## Wiadomości do odbiorców
+Oprócz raportu dla admina silnik wysyła osobne wiadomości do osób, które dobrowolnie zapisano w panelu (zakładka Odbiorcy e-maili). Każdy dostaje tylko zmiany i zadania swojej roli oraz link „Wypisz mnie”. Wysyłka: Brevo (domyślnie, gdy jest `BREVO_API_KEY`) albo Resend. Konfiguracja: `SETUP-PANEL.md`.
+
 ## Szkice dokumentów
 1. W panelu (Dokumenty szkoły) wgrywasz tekst statutu i procedur (.docx, .txt, .md albo wklejony tekst). **Bez danych osobowych.**
 2. Gdy skan wykryje zmianę prawa, która wymaga zmiany takiego dokumentu, silnik prosi model o propozycje zmian.

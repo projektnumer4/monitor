@@ -57,6 +57,38 @@ Alternatywa: Netlify albo Vercel jako projekt statyczny z katalogiem publikacji 
 4. Szkice pojawią się w zakładce **Szkice dokumentów** po najbliższym skanie albo po ręcznym uruchomieniu workflow *Szkice dokumentów*.
 5. Wymagany jest tryb AI `gemini` lub `claude`.
 
+## Wiadomości do nauczycieli: Brevo (dobrowolny zapis, 0 zł)
+
+Silnik wysyła raport dla Ciebie (adresy z `REPORT_TO`) i osobne, krótsze wiadomości dla osób zapisanych w panelu, w zakładce **Odbiorcy e-maili**.
+Każda osoba dostaje tylko zmiany i zadania swojej roli, a w stopce ma link „Wypisz mnie”. Darmowy plan Brevo: 300 wiadomości dziennie, bez własnej domeny.
+
+**Kolejność ma znaczenie: najpierw baza, potem kod.**
+
+1. **Baza.** Supabase → SQL Editor → New query → wklej `supabase/recipients.sql` → Run.
+2. **Konto Brevo.** Załóż konto na brevo.com (plan Free). W menu konta wybierz **Senders, Domains & Dedicated IPs → Senders → Add a sender**, wpisz swój adres i potwierdź go linkiem z maila.
+   Nazwy w menu mogą się nieznacznie różnić. Zdarza się, że Brevo przy nowym koncie chce chwilę zweryfikować użycie, wtedy pierwsza wysyłka rusza dopiero po ich akceptacji.
+3. **Klucz API.** Menu konta → **SMTP & API → API keys → Generate a new API key**. Skopiuj klucz (widać go tylko raz).
+4. **GitHub: Settings → Secrets and variables → Actions.**
+
+   | Rodzaj | Nazwa | Wartość |
+   |---|---|---|
+   | Secret | `BREVO_API_KEY` | klucz z kroku 3 |
+   | Secret | `REPORT_FROM` | zweryfikowany adres nadawcy z kroku 2 (sam adres, np. `jan@gmail.com`) |
+   | Secret | `REPORT_TO` | Twój adres (raport zbiorczy; kilka adresów po przecinku) |
+   | Variable | `APP_URL` | adres panelu, np. `https://monitor.TWOJA-NAZWA.workers.dev` (bez ukośnika na końcu) |
+   | Variable (opcjonalnie) | `REPORT_FROM_NAME` | nazwa nadawcy, np. `Monitor prawa` |
+
+   `APP_URL` jest obowiązkowy: bez niego nikt poza Tobą nie dostanie wiadomości, bo w stopce musi być działający link do wypisania.
+5. **Wiadomość próbna.** Actions → **Wiadomość próbna** → Run workflow. Na adres z `REPORT_TO` przyjdzie krótki mail. Sprawdź, czy jest w skrzynce odbiorczej, a nie w spamie.
+6. **Odbiorcy.** W panelu: *Odbiorcy e-maili → Dodaj osobę*. Wpisz imię, adres, zaznacz role i datę oraz sposób wyrażenia zgody. Dodawaj tylko osoby, które same o to poprosiły.
+7. Od następnego skanu zapisane osoby dostają wiadomości o zmianach w ich rolach. Osoba, której nic nie dotyczy, nie dostaje nic.
+
+Co warto wiedzieć:
+- Liczbę wysłanych i nieudanych wiadomości widać w logu skanu („Odbiorcy: wysłano … błędów …”). Awaria wysyłki do odbiorców **nie** psuje skanu ani raportu dla Ciebie.
+- W logach nie zapisujemy adresów e-mail. Repozytorium jest publiczne, więc logi Actions też są, dlatego adresy odbiorców trzymamy wyłącznie w bazie Supabase, a nie w plikach ani w sekretach.
+- Wiadomości z adresu `@gmail.com`, wysyłane przez usługę zewnętrzną, mogą na początku trafiać do spamu. Poproś odbiorców, żeby oznaczyli pierwszą wiadomość jako „nie spam”. Własna domena rozwiązuje to na stałe.
+- Przejście z Resend na Brevo: ustaw sekret `BREVO_API_KEY`. Usługa wybierze się sama. Wymusisz ją zmienną `MAIL_PROVIDER` (`brevo` lub `resend`).
+
 ## Jak panel łączy się z silnikiem skanowania
 
 Zmiany w zakładkach **Źródła**, **Priorytety i słowa kluczowe**, **Role** i **Ustawienia** zapisują się w bazie.
@@ -72,6 +104,7 @@ Silnik czyta je przy każdym skanie i stosuje zamiast ustawień z pliku `config/
 | „Brak uprawnień” po zalogowaniu | konto nie jest na liście adminów (krok 1.5) |
 | „Nie udało się rozpocząć konfiguracji 2FA” | TOTP wyłączone w Supabase (krok 1.4) |
 | Panel otwiera się, ale „permission denied” | `panel.sql` nie został wykonany albo wykonany w innym projekcie (krok 1.1) |
+| Zakładka „Odbiorcy e-maili” prosi o wykonanie skryptu | nie wykonano `supabase/recipients.sql` (krok 1 sekcji o Brevo) |
 | Panel pusty, mimo że skany działają | w tabeli `changes` nie ma jeszcze wpisów: uruchom skan w Actions |
 | Link pracownika pokazuje „nieważny” | link odwołany, wygasł albo skopiowany z błędem: utwórz nowy |
 

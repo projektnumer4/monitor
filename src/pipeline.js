@@ -4,6 +4,7 @@ import { buildSources } from './sources/index.js';
 import { scoreCandidate } from './filter.js';
 import { decidePriority } from './priority.js';
 import { renderReport } from './report.js';
+import { sendToRecipients, scrub } from './recipients.js';
 
 /**
  * Jeden przebieg: pobierz nowe akty -> odfiltruj -> przeanalizuj -> nadaj priorytet -> zapisz -> wyślij raport.
@@ -133,7 +134,15 @@ export async function runScan({ cfg, http, store, analyzer, mailer, drafter = nu
     log('Brak zmian, raport pominięty (report.sendWhenEmpty = false).');
   }
 
-  const summary = { reviewed, changes: changes.length, health };
+  // Wiadomości do odbiorców idą dopiero po raporcie dla admina. Ich awaria nie unieważnia skanu i nie powoduje ponowienia raportu.
+  let recipients = null;
+  try {
+    recipients = await sendToRecipients({ mailer, store, cfg, today, changes, upcoming, appUrl, log });
+  } catch (e) {
+    log(`UWAGA: wysyłka do odbiorców nie powiodła się: ${scrub(e.message)}`);
+  }
+
+  const summary = { reviewed, changes: changes.length, health, ...(recipients && (recipients.sent || recipients.failed) ? { recipients } : {}) };
   await store.recordRun(today, summary);
   return { skipped: false, report, changes, health, summary };
 }

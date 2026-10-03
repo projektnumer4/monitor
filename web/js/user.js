@@ -38,4 +38,22 @@ export async function renderUserView({ api, root, token, now = () => new Date() 
     try { localStorage.setItem('theme', r.dataset.theme); } catch { /* brak dostępu */ }
   });
 }
+
+/** Strona z linku „Wypisz mnie” ze stopki wiadomości. Wypisanie wymaga kliknięcia, więc automatyczne skanery poczty niczego nie zmieniają. */
+export function renderUnsubscribe({ api, root, token }) {
+  const card = (inner) => { root.innerHTML = `<div class="centered"><div class="card pad stack" style="max-width:460px;text-align:center"><div class="logo" style="margin:0 auto 4px">§</div>${inner}</div></div>`; };
+  card(`<h2>Wypisanie z wiadomości</h2><p class="muted">Kliknij poniżej, aby przestać otrzymywać wiadomości z Monitora prawa oświatowego. Nie musisz się z niczego tłumaczyć.</p>
+    <button class="btn pri" id="unsub">Wypisz mnie</button>`);
+  root.querySelector('#unsub').addEventListener('click', async () => {
+    const btn = root.querySelector('#unsub');
+    btn.disabled = true;
+    try {
+      const ok = await api.unsubscribe(token);
+      if (ok) card('<h2>Wypisano</h2><p class="muted">Nie będziesz już dostawać tych wiadomości. Jeśli zmienisz zdanie, napisz do osoby, która prowadzi projekt.</p>');
+      else card('<h2>Link jest nieważny</h2><p class="muted">Nie rozpoznaję tego linku. Jeśli nadal dostajesz wiadomości, napisz do osoby, która prowadzi projekt.</p>');
+    } catch (e) {
+      card(`<h2>Nie udało się wypisać</h2><p class="muted">${esc(e.message)}</p><p class="muted small">Spróbuj ponownie za chwilę albo napisz do osoby, która prowadzi projekt.</p>`);
+    }
+  });
+}
 export { toast };

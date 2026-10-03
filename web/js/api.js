@@ -75,6 +75,25 @@ export const api = (sb) => ({
     return must(await sb.from('document_drafts').update(patch).eq('id', id).select());
   },
 
+  /* odbiorcy wiadomości e-mail (dobrowolny zapis) */
+  async listRecipients() {
+    return must(await sb.from('recipients').select('id,name,email,roles,status,consent_at,consent_note,unsubscribed_at,created_at').order('name', { ascending: true })) ?? [];
+  },
+  async addRecipient({ name, email, roles, consent_at, consent_note }) {
+    const rows = must(await sb.from('recipients').insert({ name, email, roles, consent_at, consent_note: consent_note || null }).select('id,name,email,roles,status,consent_at,consent_note,unsubscribed_at,created_at'));
+    return rows?.[0] ?? null;
+  },
+  async updateRecipient(id, patch) {
+    return must(await sb.from('recipients').update(patch).eq('id', id).select('id'));
+  },
+  async deleteRecipient(id) {
+    return must(await sb.from('recipients').delete().eq('id', id));
+  },
+  /** Wypisanie z linku w stopce wiadomości (bez logowania). Zwraca true, gdy token jest prawidłowy. */
+  async unsubscribe(token) {
+    return must(await sb.rpc('unsubscribe_recipient', { p_token: token })) === true;
+  },
+
   async roleView(token) {
     return must(await sb.rpc('get_role_view', { p_token: token }));
   },

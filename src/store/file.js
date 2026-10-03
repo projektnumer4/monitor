@@ -18,6 +18,7 @@ export function createFileStore(file = '.data/state.json') {
     async hasRun(date) { return (await load()).runs[date]?.status === 'ok'; },
     async recordRun(date, summary) { (await load()).runs[date] = { status: 'ok', summary }; await save(); },
     async getSeen(keys) { const s = await load(); return new Set(keys.filter((k) => s.seen[k])); },
+    async listRecipients() { return Object.values((await load()).recipients ?? {}); },
     async listDocuments() { return Object.values((await load()).documents ?? {}); },
     async listDrafts() { return Object.values((await load()).drafts ?? {}); },
     async saveDraft(d) { const s = await load(); s.drafts ??= {}; const k = `${d.change_key}||${d.document_name}`; s.drafts[k] = { ...(s.drafts[k] ?? {}), ...d }; await save(); },

@@ -1,7 +1,7 @@
 import { api as makeApi } from './api.js';
 import { runAuth } from './auth.js';
 import { createAdminApp } from './admin.js';
-import { renderUserView } from './user.js';
+import { renderUserView, renderUnsubscribe } from './user.js';
 import { esc } from './util.js';
 
 /** Punkt wejścia aplikacji. Wydzielony z main.js, żeby można go było testować bez przeglądarki. */
@@ -9,6 +9,8 @@ export async function startApp({ sb, root, defaults, now = () => new Date(), loa
   const A = makeApi(sb);
   const m = (globalThis.location.hash || '').match(/^#\/r\/([A-Za-z0-9_-]+)$/);
   if (m) return renderUserView({ api: A, root, token: m[1], now });
+  const u = (globalThis.location.hash || '').match(/^#\/wypisz\/([A-Za-z0-9_-]+)$/);
+  if (u) return renderUnsubscribe({ api: A, root, token: u[1] });
 
   const auth = runAuth({
     sb, root, api: A,

@@ -23,7 +23,7 @@ function deadlineText(c, today) {
 }
 
 /** Buduje raport dzienny: temat, HTML (do e-maila) i wersję tekstową. */
-export function renderReport({ cfg, today, changes, upcoming = [], health = [], stats = {}, appUrl = '', drafts = null }) {
+export function renderReport({ cfg, today, changes, upcoming = [], health = [], stats = {}, appUrl = '', drafts = null, audience = null, footer = null }) {
   const list = sortChanges(changes);
   const count = (p) => list.filter((c) => c.priority === p).length;
   const link = (c) => (appUrl ? `${appUrl.replace(/\/$/, '')}/changes/${encodeURIComponent(c.key)}` : c.url);
@@ -81,9 +81,10 @@ export function renderReport({ cfg, today, changes, upcoming = [], health = [], 
   const html = `<!doctype html><html lang="pl"><body style="margin:0;background:#F4F5F8;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#171B26">
 <div style="max-width:680px;margin:0 auto;padding:24px 16px">
   <h1 style="font-size:22px;margin:0 0 4px">Raport z ${esc(plDate(today))}</h1>
-  <p style="margin:0 0 14px;color:#5C6478;font-size:13px">${esc(cfg.school.name)} · przejrzano ${stats.reviewed ?? 0} nowych aktów z ${stats.sources ?? 0} źródeł, ${list.length} dotyczy placówki</p>
+  <p style="margin:0 0 14px;color:#5C6478;font-size:13px">${esc(cfg.school.name)} · ${audience ? `dla Twojej roli (${esc(audience.roles.join(', '))}): ${list.length} ${pluralZmiana(list.length)}` : `przejrzano ${stats.reviewed ?? 0} nowych aktów z ${stats.sources ?? 0} źródeł, ${list.length} dotyczy placówki`}</p>
   ${healthHtml}${baselineHtml}${draftsHtml}${body}${upcomingHtml}
   <p style="margin:26px 0 0;font-size:12px;color:#5C6478">Streszczenia i przypisania zadań przygotował asystent AI. To pomoc w pracy, nie porada prawna: przed zmianą dokumentów sprawdź treść aktu w źródle.</p>
+  ${footer ? footer.html : ''}
 </div></body></html>`;
 
   const text = [
@@ -106,6 +107,7 @@ export function renderReport({ cfg, today, changes, upcoming = [], health = [], 
     ...(failed.length ? ['UWAGA, źródła z błędem:', ...failed.map((h) => `  ${h.name}: ${h.error}`), ''] : []),
     ...(upcoming.length ? ['Zbliżające się terminy:', ...upcoming.map((c) => `  ${deadlineText(c, today)}: ${c.title}`), ''] : []),
     'Streszczenia przygotował asystent AI. To nie jest porada prawna, sprawdź treść aktu w źródle.',
+    ...(footer ? ['', footer.text] : []),
   ].join('\n');
 
   return { subject, html, text };

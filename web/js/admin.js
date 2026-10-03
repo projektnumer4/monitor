@@ -16,10 +16,11 @@ const ico = {
   zrodla: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.9 5.6 3.9 9s-1.3 6.4-3.9 9c-2.6-2.6-3.9-5.6-3.9-9S9.4 5.6 12 3Z"/>',
   priorytety: '<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>',
   linki: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  odbiorcy: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
   skany: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   ustawienia: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>',
 };
-const NAV = [['', 'Przegląd'], ['zmiany', 'Zmiany prawa'], ['szkice', 'Szkice dokumentów'], ['dokumenty', 'Dokumenty szkoły'], ['role', 'Role i zadania'], ['zrodla', 'Źródła'], ['priorytety', 'Priorytety i słowa kluczowe'], ['linki', 'Linki dla pracowników'], ['skany', 'Historia skanów'], ['ustawienia', 'Ustawienia i konto']];
+const NAV = [['', 'Przegląd'], ['zmiany', 'Zmiany prawa'], ['szkice', 'Szkice dokumentów'], ['dokumenty', 'Dokumenty szkoły'], ['role', 'Role i zadania'], ['zrodla', 'Źródła'], ['priorytety', 'Priorytety i słowa kluczowe'], ['linki', 'Linki dla pracowników'], ['odbiorcy', 'Odbiorcy e-maili'], ['skany', 'Historia skanów'], ['ustawienia', 'Ustawienia i konto']];
 const OPEN = new Set(['new', 'in_progress']);
 const KW_GROUPS = [['education', 'Oświata (mocne)', 'Słowa, które same wystarczą, by akt trafił do analizy'], ['supporting', 'Pomocnicze', 'Słabsze sygnały, liczą się dopiero w połączeniu z innymi'], ['administrative', 'Prawo administracyjne', 'Tematy ogólne, które też dotyczą szkoły']];
 
@@ -32,7 +33,7 @@ const wf = (w) => `<span class="status ${w}">${WORKFLOW_LABEL[w] ?? w}</span>`;
 
 export function createAdminApp({ api: A, root, defaults, user, logout, sb, now = () => new Date(), loaders = realLoaders }) {
   const S = {
-    cfg: deepClone(defaults), changes: [], runs: [], links: [], docs: [], drafts: [], docCache: null, docLoading: null, preview: null, newLink: null, factors: null,
+    cfg: deepClone(defaults), changes: [], runs: [], links: [], recipients: null, docs: [], drafts: [], docCache: null, docLoading: null, preview: null, newLink: null, factors: null,
     filter: { prio: 'all', wf: 'open', q: '' }, loading: true, error: null,
   };
   const today = () => todayWarsaw(now());
@@ -43,6 +44,8 @@ export function createAdminApp({ api: A, root, defaults, user, logout, sb, now =
     try {
       const [changes, runs, links, override, docs, drafts] = await Promise.all([A.loadChanges(), A.loadRuns(), A.listLinks(), A.loadConfigOverride(), A.listDocuments(), A.listDrafts()]);
       Object.assign(S, { changes, runs, links, docs, drafts, cfg: override ? mergeConfig(defaults, override) : deepClone(defaults) });
+      // Tabela odbiorców powstaje dopiero po wykonaniu recipients.sql. Jej brak nie może psuć reszty panelu.
+      S.recipients = A.listRecipients ? await A.listRecipients().catch(() => null) : null;
     } catch (e) {
       S.error = e.message;
     }
@@ -243,6 +246,33 @@ export function createAdminApp({ api: A, root, defaults, user, logout, sb, now =
       <p class="muted small" style="margin-top:12px">Każdy, kto ma link, zobaczy zadania tej roli. W systemie nie ma danych uczniów ani pracowników, ale traktuj linki jak hasła.</p>`;
   }
 
+  const RCPT_ERR = /recipients_email_key|duplicate key/i;
+  function pRecipients() {
+    if (S.recipients === null) {
+      return `${top('Odbiorcy e-maili', 'Osoby, które dobrowolnie zgodziły się dostawać wiadomości o zmianach dotyczących ich roli.')}
+        <div class="warn" role="status">⚠️ <span>Lista odbiorców nie jest jeszcze gotowa. W Supabase (SQL Editor) wykonaj plik <b>supabase/recipients.sql</b>, a potem odśwież tę stronę.</span></div>`;
+    }
+    const roleNames = new Set(S.cfg.roles.map((r) => r.name));
+    const active = S.recipients.filter((r) => r.status === 'active').length;
+    return `${top('Odbiorcy e-maili', 'Osoby, które dobrowolnie zgodziły się dostawać wiadomości o zmianach dotyczących ich roli. Każda wiadomość ma link „Wypisz mnie”.')}
+      <form class="card pad stack" data-form="newrecipient" style="margin-bottom:16px">
+        <h2>Dodaj osobę</h2>
+        <div class="row"><input name="name" placeholder="Imię i nazwisko" class="grow" required aria-label="Imię i nazwisko"><input name="email" type="email" placeholder="Adres e-mail" class="grow" required aria-label="Adres e-mail"></div>
+        <fieldset style="border:0;padding:0;margin:0"><legend class="small muted" style="margin-bottom:6px">Role (osoba dostanie zadania tych ról)</legend>
+          <div class="row" style="flex-wrap:wrap;gap:12px">${S.cfg.roles.map((r) => `<label class="row small" style="gap:6px"><input type="checkbox" name="roles" value="${esc(r.name)}"> ${esc(r.name)}</label>`).join('')}</div></fieldset>
+        <div class="row"><input name="consent_at" type="date" value="${esc(today())}" aria-label="Data zgody" required><input name="consent_note" placeholder="Jak wyrażono zgodę (np. ustnie, SMS, e-mail)" class="grow" aria-label="Sposób wyrażenia zgody"></div>
+        <label class="row small" style="gap:8px"><input type="checkbox" name="consent" required> Ta osoba sama poprosiła o te wiadomości i wie, że może się wypisać w każdej chwili.</label>
+        <div><button class="btn pri" type="submit">Dodaj odbiorcę</button></div></form>
+      <div class="card"><div class="wrap-x"><table class="tbl"><thead><tr><th>Osoba</th><th>Role</th><th>Zgoda od</th><th>Status</th><th></th></tr></thead><tbody>
+        ${S.recipients.length ? S.recipients.map((r) => `<tr><td><b>${esc(r.name)}</b><div class="muted small">${esc(r.email)}</div></td>
+          <td>${(r.roles ?? []).map((n) => `<span class="tag"${roleNames.has(n) ? '' : ' title="Tej roli nie ma już w ustawieniach"'}>${esc(n)}${roleNames.has(n) ? '' : ' ⚠'}</span>`).join(' ')}</td>
+          <td>${esc(plDate(r.consent_at))}${r.consent_note ? `<div class="muted small">${esc(r.consent_note)}</div>` : ''}</td>
+          <td><span class="status ${r.status === 'active' ? 'done' : 'dismissed'}">${r.status === 'active' ? 'Aktywny' : `Wypisany${r.unsubscribed_at ? ` ${esc(plDate(r.unsubscribed_at))}` : ''}`}</span></td>
+          <td style="text-align:right;white-space:nowrap">${r.status === 'active' ? `<button class="btn sm" data-a="unsubrec" data-id="${esc(r.id)}">Wypisz</button> ` : ''}<button class="btn sm danger" data-a="delrec" data-id="${esc(r.id)}">Usuń</button></td></tr>`).join('') : '<tr><td colspan="5" class="muted">Nikt nie jest jeszcze zapisany.</td></tr>'}
+      </tbody></table></div></div>
+      <p class="muted small" style="margin-top:12px">Aktywnych odbiorców: ${active}. Wiadomość dostaje tylko ten, kogo dotyczy zmiana w jego roli. Osoba wypisana przez link nie wróci na listę bez Twojego dodania jej od nowa (usuń wpis i dodaj z nową datą zgody). Adresy trzymamy wyłącznie w bazie, nigdy w repozytorium.</p>`;
+  }
+
   function pRuns() {
     return `${top('Historia skanów', 'Ostatnie 30 skanów.')}
       <div class="card"><div class="wrap-x"><table class="tbl"><thead><tr><th>Data</th><th>Status</th><th>Nowych pozycji</th><th>Zmian dla placówki</th><th>Źródła z błędem</th></tr></thead><tbody>
@@ -375,7 +405,7 @@ export function createAdminApp({ api: A, root, defaults, user, logout, sb, now =
     if (S.loading) inner = '<div class="card pad stack"><div class="skeleton" style="width:40%"></div><div class="skeleton" style="width:80%"></div><div class="skeleton" style="width:60%"></div></div>';
     else if (S.error) inner = `<div class="errbox" role="alert">Nie udało się wczytać danych: ${esc(S.error)}</div><p style="margin-top:12px"><button class="btn" data-a="reload">Spróbuj ponownie</button></p>`;
     else {
-      const pages = { '': pDashboard, zmiany: () => (arg ? pDetail(arg) : pChanges()), szkice: () => (arg ? pDraft(arg) : pDraftList()), dokumenty: pDocs, role: pRoles, zrodla: pSources, priorytety: pRules, linki: pLinks, skany: pRuns, ustawienia: pSettings };
+      const pages = { '': pDashboard, zmiany: () => (arg ? pDetail(arg) : pChanges()), szkice: () => (arg ? pDraft(arg) : pDraftList()), dokumenty: pDocs, role: pRoles, zrodla: pSources, priorytety: pRules, linki: pLinks, odbiorcy: pRecipients, skany: pRuns, ustawienia: pSettings };
       inner = (pages[page] ?? pDashboard)();
     }
     const focusId = globalThis.document.activeElement?.id;
@@ -409,6 +439,8 @@ export function createAdminApp({ api: A, root, defaults, user, logout, sb, now =
     } else if (a === 'deldoc') await saveCfg((c) => { c.documents.splice(+d.i, 1); }, 'Usunięto dokument');
     else if (a === 'revoke') { await A.revokeLink(d.id); S.links = await A.listLinks(); render(); toast('Link odwołany'); }
     else if (a === 'dellink') { if (confirm('Usunąć ten link na stałe?')) { await A.deleteLink(d.id); S.links = await A.listLinks(); render(); toast('Link usunięty'); } }
+    else if (a === 'unsubrec') { if (confirm('Wypisać tę osobę? Przestanie dostawać wiadomości.')) { await A.updateRecipient(d.id, { status: 'unsubscribed', unsubscribed_at: new Date().toISOString() }); S.recipients = await A.listRecipients(); render(); toast('Osoba wypisana'); } }
+    else if (a === 'delrec') { if (confirm('Usunąć tę osobę z listy na stałe (razem z adresem)?')) { await A.deleteRecipient(d.id); S.recipients = await A.listRecipients(); render(); toast('Usunięto z listy'); } }
     else if (a === 'copylink') { await globalThis.navigator?.clipboard?.writeText(d.url); toast('Skopiowano link'); }
     else if (a === 'closenew') { S.newLink = null; render(); }
     else if (a === 'reqdraft') { await A.requestDraft(d.key, d.name); S.drafts = await A.listDrafts(); render(); toast('Szkic zostanie przygotowany przy najbliższym skanie'); }
@@ -491,6 +523,19 @@ export function createAdminApp({ api: A, root, defaults, user, logout, sb, now =
       S.links = await A.listLinks();
       S.newLink = { token, role: str('role') };
       render(); toast('Utworzono link');
+    } else if (name === 'newrecipient') {
+      const email = str('email').toLowerCase();
+      const roles = f.getAll('roles').map(String);
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast('Podaj poprawny adres e-mail', 'err');
+      if (!roles.length) return toast('Zaznacz przynajmniej jedną rolę', 'err');
+      if (f.get('consent') !== 'on') return toast('Potwierdź, że osoba wyraziła zgodę', 'err');
+      try {
+        await A.addRecipient({ name: str('name'), email, roles, consent_at: str('consent_at') || today(), consent_note: str('consent_note') });
+      } catch (e) {
+        if (RCPT_ERR.test(e.message)) return toast('Ten adres już jest na liście', 'err');
+        throw e;
+      }
+      S.recipients = await A.listRecipients(); render(); toast('Dodano odbiorcę');
     } else if (name === 'school') {
       await saveCfg((c) => { c.school = { ...c.school, name: str('name'), profile: str('profile') }; }, 'Zapisano dane placówki');
     } else if (name === 'adddoc') {

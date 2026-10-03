@@ -1,22 +1,73 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-/** Wysyłka przez Resend (https://resend.com). */
-export function createResendMailer({ apiKey, from, to, http }) {
-  if (!apiKey) throw new Error('Brak RESEND_API_KEY');
+const parseList = (to) => String(to ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+
+/** Rozbija „Nazwa <adres@domena>” albo samo „adres@domena” na { name, email }. */
+export function parseSender(from, fallbackName = 'Monitor prawa') {
+  const s = String(from ?? '').trim();
+  const m = s.match(/^(.*?)\s*<([^>]+)>$/);
+  if (m) return { name: m[1].replace(/^"|"$/g, '').trim() || fallbackName, email: m[2].trim() };
+  return { name: fallbackName, email: s };
+}
+
+const asRecipients = (to) => [].concat(to).map((x) => (typeof x === 'string' ? { email: x } : x));
+
+/**
+ * Wysyłka przez Brevo (https://www.brevo.com), API transakcyjne. Darmowy plan: 300 wiadomości dziennie.
+ * Nadawca (REPORT_FROM) musi być zweryfikowany w Brevo. Domena własna nie jest wymagana.
+ * `send({ to })` nadpisuje domyślnych odbiorców (REPORT_TO), co służy do wysyłki do pojedynczych osób.
+ */
+export function createBrevoMailer({ apiKey, from, fromName, to, http }) {
+  if (!apiKey) throw new Error('Brak BREVO_API_KEY');
   if (!from) throw new Error('Brak REPORT_FROM (nadawca raportu)');
-  const recipients = String(to ?? '').split(',').map((s) => s.trim()).filter(Boolean);
-  if (!recipients.length) throw new Error('Brak REPORT_TO (odbiorcy raportu)');
+  const sender = parseSender(from, fromName || 'Monitor prawa');
+  if (fromName) sender.name = fromName;
+  if (!/^[^@\s]+@[^@\s]+$/.test(sender.email)) throw new Error('REPORT_FROM musi być adresem e-mail, np. imie@gmail.com');
+  const defaults = parseList(to);
   return {
-    name: 'resend',
-    async send({ subject, html, text }) {
-      await http.request('https://api.resend.com/emails', {
+    name: 'brevo',
+    supportsRecipients: true,
+    delayMs: 0,
+    async send({ subject, html, text, to: override, headers }) {
+      const list = override ? asRecipients(override) : defaults.map((email) => ({ email }));
+      if (!list.length) throw new Error('Brak REPORT_TO (odbiorcy raportu)');
+      await http.request('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
-        body: JSON.stringify({ from, to: recipients, subject, html, text }),
+        headers: { 'api-key': apiKey, accept: 'application/json', 'content-type': 'application/json' },
+        body: JSON.stringify({ sender, to: list, subject, htmlContent: html, textContent: text, ...(headers ? { headers } : {}) }),
       });
     },
   };
+}
+
+/** Wysyłka przez Resend (https://resend.com). Bez własnej domeny dostarcza tylko do właściciela konta. */
+export function createResendMailer({ apiKey, from, to, http }) {
+  if (!apiKey) throw new Error('Brak RESEND_API_KEY');
+  if (!from) throw new Error('Brak REPORT_FROM (nadawca raportu)');
+  const recipients = parseList(to);
+  if (!recipients.length) throw new Error('Brak REPORT_TO (odbiorcy raportu)');
+  return {
+    name: 'resend',
+    supportsRecipients: true,
+    delayMs: 600, // Resend dopuszcza 2 żądania na sekundę
+    async send({ subject, html, text, to: override, headers }) {
+      const list = override ? asRecipients(override).map((r) => r.email) : recipients;
+      await http.request('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ from, to: list, subject, html, text, ...(headers ? { headers } : {}) }),
+      });
+    },
+  };
+}
+
+/** Wybiera usługę wysyłki: MAIL_PROVIDER=brevo|resend, a gdy nie podano, Brevo jeśli jest BREVO_API_KEY, w przeciwnym razie Resend. */
+export function createMailerFromEnv({ env = process.env, http }) {
+  const provider = String(env.MAIL_PROVIDER || (env.BREVO_API_KEY ? 'brevo' : 'resend')).toLowerCase();
+  if (provider === 'brevo') return createBrevoMailer({ apiKey: env.BREVO_API_KEY, from: env.REPORT_FROM, fromName: env.REPORT_FROM_NAME, to: env.REPORT_TO, http });
+  if (provider === 'resend') return createResendMailer({ apiKey: env.RESEND_API_KEY, from: env.REPORT_FROM, to: env.REPORT_TO, http });
+  throw new Error(`Nieznana wartość MAIL_PROVIDER: ${provider} (dozwolone: brevo, resend)`);
 }
 
 /** Zamiast wysyłki zapisuje raport do plików (tryb próbny). */

@@ -39,6 +39,8 @@ export function fakeSupabase(opts = {}) {
     access_links: opts.links ?? [],
     school_documents: opts.documents ?? [],
     document_drafts: opts.drafts ?? [],
+    // Bez opts.recipients tabela „nie istnieje” (jak przed wykonaniem recipients.sql).
+    ...(opts.recipients ? { recipients: opts.recipients } : {}),
   };
   const calls = [];
   let session = opts.session === undefined ? null : opts.session;
@@ -50,12 +52,14 @@ export function fakeSupabase(opts = {}) {
     const run = () => {
       calls.push({ table, op: q.op, payload: q.payload, filters: q.filters });
       let rows = db[table];
+      if (!rows) return { data: null, error: { message: `relation "public.${table}" does not exist` } };
       const match = (r) => q.filters.every(([c, v]) => r[c] === v);
       if (q.op === 'select') {
         let out = rows.filter(match);
         return { data: out.map((r) => ({ ...r })), error: null };
       }
       if (q.op === 'update') { rows.filter(match).forEach((r) => Object.assign(r, q.payload)); return { data: rows.filter(match), error: null }; }
+      if (q.op === 'insert' && table === 'recipients' && rows.some((x) => x.email.toLowerCase() === String(q.payload.email).toLowerCase())) return { data: null, error: { message: 'duplicate key value violates unique constraint "recipients_email_key"' } };
       if (q.op === 'insert') { const r = { id: `id${rows.length + 1}`, created_at: new Date().toISOString(), revoked: false, last_used_at: null, ...q.payload }; rows.push(r); return { data: [r], error: null }; }
       if (q.op === 'upsert') {
         const cols = String(q.onConflict || 'key').split(',');
@@ -86,6 +90,11 @@ export function fakeSupabase(opts = {}) {
       calls.push({ rpc: fn, args });
       if (fn === 'is_registered_admin') return { data: opts.isAdmin !== false, error: null };
       if (fn === 'get_role_view') return { data: opts.roleView?.(args.p_token) ?? null, error: null };
+      if (fn === 'unsubscribe_recipient') {
+        const r = (db.recipients ?? []).find((x) => x.unsub_token === args.p_token);
+        if (r && r.status === 'active') Object.assign(r, { status: 'unsubscribed', unsubscribed_at: new Date().toISOString() });
+        return { data: Boolean(r), error: null };
+      }
       return { data: null, error: { message: 'unknown rpc' } };
     },
     auth: {
