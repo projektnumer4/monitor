@@ -31,3 +31,6 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           REPORT_FROM: ${{ secrets.REPORT_FROM }}
           REPORT_TO: ${{ secrets.REPORT_TO }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          MAIL_PROVIDER: ${{ vars.MAIL_PROVIDER }}
+          REPORT_FROM_NAME: ${{ vars.REPORT_FROM_NAME }}
