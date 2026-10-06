@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { createBrevoMailer, createResendMailer, createMailerFromEnv, parseSender } from '../src/mail.js';
+import { createBrevoMailer, createMailerFromEnv, parseSender } from '../src/mail.js';
 import { changesForRecipient, buildRecipientMails, sendToRecipients, scrub } from '../src/recipients.js';
 import { runScan } from '../src/pipeline.js';
 import { createFileStore } from '../src/store/file.js';
@@ -46,21 +46,10 @@ test('Brevo: brak klucza, nadawcy lub niepoprawny nadawca kończą się czytelny
   assert.deepEqual(parseSender('jan@gmail.com'), { name: 'Monitor prawa', email: 'jan@gmail.com' });
 });
 
-test('wybór usługi: Brevo, gdy jest klucz; Resend domyślnie bez niego; MAIL_PROVIDER ma pierwszeństwo', () => {
+test('createMailerFromEnv: zawsze Brevo; bez BREVO_API_KEY czytelny błąd (bez cichego powrotu do innej usługi)', () => {
   const base = { REPORT_FROM: 'a@b.pl', REPORT_TO: 'x@y.pl' };
-  assert.equal(createMailerFromEnv({ env: { ...base, BREVO_API_KEY: 'k', RESEND_API_KEY: 'r' }, http: {} }).name, 'brevo');
-  assert.equal(createMailerFromEnv({ env: { ...base, RESEND_API_KEY: 'r' }, http: {} }).name, 'resend');
-  assert.equal(createMailerFromEnv({ env: { ...base, BREVO_API_KEY: 'k', RESEND_API_KEY: 'r', MAIL_PROVIDER: 'resend' }, http: {} }).name, 'resend');
-  assert.throws(() => createMailerFromEnv({ env: { ...base, MAIL_PROVIDER: 'poczta' }, http: {} }), /MAIL_PROVIDER/);
-});
-
-test('Resend nadal działa po zmianach: domyślni odbiorcy i nadpisanie', async () => {
-  const r = recorder();
-  const m = createResendMailer({ apiKey: 'k', from: 'f@x.pl', to: 'a@x.pl', http: r.http });
-  await m.send({ subject: 'S', html: 'h', text: 't' });
-  await m.send({ subject: 'S', html: 'h', text: 't', to: [{ email: 'n@x.pl' }] });
-  assert.deepEqual(r.calls[0].body.to, ['a@x.pl']);
-  assert.deepEqual(r.calls[1].body.to, ['n@x.pl']);
+  assert.equal(createMailerFromEnv({ env: { ...base, BREVO_API_KEY: 'k' }, http: {} }).name, 'brevo');
+  assert.throws(() => createMailerFromEnv({ env: { ...base, RESEND_API_KEY: 'r' }, http: {} }), /BREVO_API_KEY/);
 });
 
 const task = (role) => ({ role, action: `Zadanie ${role}` });

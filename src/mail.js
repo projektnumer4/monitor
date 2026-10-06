@@ -41,33 +41,9 @@ export function createBrevoMailer({ apiKey, from, fromName, to, http }) {
   };
 }
 
-/** Wysyłka przez Resend (https://resend.com). Bez własnej domeny dostarcza tylko do właściciela konta. */
-export function createResendMailer({ apiKey, from, to, http }) {
-  if (!apiKey) throw new Error('Brak RESEND_API_KEY');
-  if (!from) throw new Error('Brak REPORT_FROM (nadawca raportu)');
-  const recipients = parseList(to);
-  if (!recipients.length) throw new Error('Brak REPORT_TO (odbiorcy raportu)');
-  return {
-    name: 'resend',
-    supportsRecipients: true,
-    delayMs: 600, // Resend dopuszcza 2 żądania na sekundę
-    async send({ subject, html, text, to: override, headers }) {
-      const list = override ? asRecipients(override).map((r) => r.email) : recipients;
-      await http.request('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
-        body: JSON.stringify({ from, to: list, subject, html, text, ...(headers ? { headers } : {}) }),
-      });
-    },
-  };
-}
-
-/** Wybiera usługę wysyłki: MAIL_PROVIDER=brevo|resend, a gdy nie podano, Brevo jeśli jest BREVO_API_KEY, w przeciwnym razie Resend. */
+/** Tworzy nadawcę poczty. Jedyna obsługiwana usługa to Brevo (wymaga BREVO_API_KEY). */
 export function createMailerFromEnv({ env = process.env, http }) {
-  const provider = String(env.MAIL_PROVIDER || (env.BREVO_API_KEY ? 'brevo' : 'resend')).toLowerCase();
-  if (provider === 'brevo') return createBrevoMailer({ apiKey: env.BREVO_API_KEY, from: env.REPORT_FROM, fromName: env.REPORT_FROM_NAME, to: env.REPORT_TO, http });
-  if (provider === 'resend') return createResendMailer({ apiKey: env.RESEND_API_KEY, from: env.REPORT_FROM, to: env.REPORT_TO, http });
-  throw new Error(`Nieznana wartość MAIL_PROVIDER: ${provider} (dozwolone: brevo, resend)`);
+  return createBrevoMailer({ apiKey: env.BREVO_API_KEY, from: env.REPORT_FROM, fromName: env.REPORT_FROM_NAME, to: env.REPORT_TO, http });
 }
 
 /** Zamiast wysyłki zapisuje raport do plików (tryb próbny). */

@@ -6,14 +6,14 @@ Działa jako zaplanowane zadanie GitHub Actions, bez własnego serwera.
 
 ```
 GitHub Actions (cron) -> źródła -> filtr słów kluczowych -> analiza AI -> reguły priorytetu
-                      -> zapis w Supabase -> raport e-mail (Resend)
+                      -> zapis w Supabase -> raport e-mail (Brevo)
 ```
 
 ## Panel admina
 Folder `web/` to panel z logowaniem (hasło + 2FA) i widokiem dla pracowników z linków. Instrukcja uruchomienia: `SETUP-PANEL.md`.
 
 ## Wiadomości do odbiorców
-Oprócz raportu dla admina silnik wysyła osobne wiadomości do osób, które dobrowolnie zapisano w panelu (zakładka Odbiorcy e-maili). Każdy dostaje tylko zmiany i zadania swojej roli oraz link „Wypisz mnie”. Wysyłka: Brevo (domyślnie, gdy jest `BREVO_API_KEY`) albo Resend. Konfiguracja: `SETUP-PANEL.md`.
+Oprócz raportu dla admina silnik wysyła osobne wiadomości do osób, które dobrowolnie zapisano w panelu (zakładka Odbiorcy e-maili). Każdy dostaje tylko zmiany i zadania swojej roli oraz link „Wypisz mnie”. Wysyłka: Brevo (`BREVO_API_KEY`). Konfiguracja: `SETUP-PANEL.md`.
 
 ## Szkice dokumentów
 1. W panelu (Dokumenty szkoły) wgrywasz tekst statutu i procedur (.docx, .txt, .md albo wklejony tekst). **Bez danych osobowych.**
@@ -67,9 +67,8 @@ pokaz działania potoku.
 2. SQL Editor -> wklej `supabase/schema.sql` -> Run.
 3. Settings -> API: skopiuj **Project URL** i klucz **service_role** (nigdy nie wklejaj go do kodu ani do frontendu).
 
-### 3. Resend (e-mail)
-Utwórz konto, wygeneruj klucz API. Bez zweryfikowanej własnej domeny Resend zwykle pozwala wysyłać tylko na adres konta,
-więc do rozsyłki do kilku osób zweryfikuj domenę.
+### 3. Brevo (e-mail)
+Załóż konto na brevo.com (plan Free), dodaj i potwierdź adres nadawcy (Senders) oraz wygeneruj klucz API. Szczegóły: `SETUP-PANEL.md`.
 
 ### 4. GitHub
 Repozytorium **prywatne**. Settings -> Secrets and variables -> Actions:
@@ -78,7 +77,7 @@ Repozytorium **prywatne**. Settings -> Secrets and variables -> Actions:
 |---|---|---|
 | Secret | `ANTHROPIC_API_KEY` | klucz z console.anthropic.com |
 | Secret | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | z kroku 2 |
-| Secret | `RESEND_API_KEY`, `REPORT_FROM`, `REPORT_TO` | z kroku 3 (`REPORT_TO` może zawierać kilka adresów po przecinku) |
+| Secret | `BREVO_API_KEY`, `REPORT_FROM`, `REPORT_TO` | z kroku 3 (`REPORT_TO` może zawierać kilka adresów po przecinku) |
 | Variable | `ANTHROPIC_MODEL` | opcjonalnie, domyślnie `claude-sonnet-5-5` (taniej: `claude-haiku-4-5-20251001`) |
 | Variable | `APP_URL` | opcjonalnie, adres panelu (linki w raporcie) |
 

@@ -87,7 +87,7 @@ Co warto wiedzieć:
 - Liczbę wysłanych i nieudanych wiadomości widać w logu skanu („Odbiorcy: wysłano … błędów …”). Awaria wysyłki do odbiorców **nie** psuje skanu ani raportu dla Ciebie.
 - W logach nie zapisujemy adresów e-mail. Repozytorium jest publiczne, więc logi Actions też są, dlatego adresy odbiorców trzymamy wyłącznie w bazie Supabase, a nie w plikach ani w sekretach.
 - Wiadomości z adresu `@gmail.com`, wysyłane przez usługę zewnętrzną, mogą na początku trafiać do spamu. Poproś odbiorców, żeby oznaczyli pierwszą wiadomość jako „nie spam”. Własna domena rozwiązuje to na stałe.
-- Przejście z Resend na Brevo: ustaw sekret `BREVO_API_KEY`. Usługa wybierze się sama. Wymusisz ją zmienną `MAIL_PROVIDER` (`brevo` lub `resend`).
+- Brevo jest jedyną obsługiwaną usługą wysyłki. Resend został usunięty: usuń sekret `RESEND_API_KEY`, jeśli jeszcze jest w repozytorium.
 
 ## Jak panel łączy się z silnikiem skanowania
 

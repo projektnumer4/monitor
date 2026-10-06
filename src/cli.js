@@ -88,7 +88,7 @@ async function verify() {
   const http = createHttp();
   const env = (k) => (process.env[k] ? 'ustawiona' : 'BRAK');
   log('Zmienne środowiskowe:');
-  for (const k of ['AI_PROVIDER', 'GEMINI_API_KEY', 'ANTHROPIC_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'BREVO_API_KEY', 'RESEND_API_KEY', 'REPORT_FROM', 'REPORT_TO', 'APP_URL']) log(`  ${k}: ${env(k)}`);
+  for (const k of ['AI_PROVIDER', 'GEMINI_API_KEY', 'ANTHROPIC_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'BREVO_API_KEY', 'REPORT_FROM', 'REPORT_TO', 'APP_URL']) log(`  ${k}: ${env(k)}`);
 
   log('\nAkty obserwowane (sprawdź, czy tytuły się zgadzają):');
   for (const w of cfg.watchedActs) {
