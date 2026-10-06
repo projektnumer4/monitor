@@ -27,6 +27,10 @@ export function createHttp({ fetchImpl = globalThis.fetch, retries = 3, timeoutM
       } catch (e) {
         clearTimeout(timer);
         if (e.fatal) throw e;
+        // fetch() w Node zgłasza tylko „fetch failed”; prawdziwa przyczyna (np. ECONNRESET, błąd certyfikatu, DNS) siedzi w e.cause.
+        const c = e.cause;
+        if (c && (c.code || c.message)) e.message = `${e.message} (${[c.code, c.message].filter(Boolean).join(': ')}) dla ${url}`;
+        else if (e.name === 'AbortError') e.message = `przekroczono limit czasu ${timeoutMs} ms dla ${url}`;
         last = e;
         await sleep(1000 * 2 ** i);
       }
