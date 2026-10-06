@@ -1,0 +1,26 @@
+name: Wiadomość próbna
+
+# Uruchamiany ręcznie (Actions -> Wiadomość próbna -> Run workflow).
+# Wysyła krótki mail na adresy z REPORT_TO, żeby sprawdzić klucz Brevo i nadawcę bez uruchamiania skanu.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  testmail:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Wyślij wiadomość próbną
+        run: node src/cli.js testmail
+        env:
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          REPORT_FROM: ${{ secrets.REPORT_FROM }}
+          REPORT_TO: ${{ secrets.REPORT_TO }}
+          REPORT_FROM_NAME: ${{ vars.REPORT_FROM_NAME }}

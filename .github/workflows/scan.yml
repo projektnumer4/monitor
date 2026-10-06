@@ -40,10 +40,8 @@ jobs:
           ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           REPORT_FROM: ${{ secrets.REPORT_FROM }}
           REPORT_TO: ${{ secrets.REPORT_TO }}
-          APP_URL: ${{ vars.APP_URL }}
-          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
-          MAIL_PROVIDER: ${{ vars.MAIL_PROVIDER }}
           REPORT_FROM_NAME: ${{ vars.REPORT_FROM_NAME }}
+          APP_URL: ${{ vars.APP_URL }}
