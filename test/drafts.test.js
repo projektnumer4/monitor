@@ -54,6 +54,7 @@ async function setup() {
   const dir = await mkdtemp(path.join(tmpdir(), 'sosw-'));
   const store = createFileStore(path.join(dir, 's.json'));
   const cfg = await loadCfg();
+  cfg.drafts = { ...cfg.drafts, auto: true }; // testy sprawdzają tryb automatyczny, domyślnie wyłączony
   await store.putDocument({ name: 'Statut SOSW', content: DOC, content_hash: sha256(DOC) });
   const change = (o = {}) => ({ key: 'DU/2026/1900', title: 'Zmiana rewalidacji', priority: 'hi', status: 'obowiazuje', workflow: 'new', documents: ['Statut SOSW'], summary: 'S', what_changes: 'W', legal_basis: 'B', act_excerpt: '§ 7. Wymiar zajęć ustala IPET.', tasks: [{ role: 'Dyrektor', action: 'x' }], effective_date: '2027-01-01', run_date: '2026-10-02', ...o });
   return { store, cfg, change };
@@ -135,6 +136,7 @@ test('runDrafts: tryb bez AI (brak modelu) nic nie tworzy', async () => {
 test('skan: szkice powstają przed raportem i są w nim wymienione, a awaria szkiców nie blokuje raportu', async () => {
   const dir = await mkdtemp(path.join(tmpdir(), 'sosw-'));
   const cfg = await loadCfg();
+  cfg.drafts = { ...cfg.drafts, auto: true }; // testy sprawdzają tryb automatyczny, domyślnie wyłączony
   const store = createFileStore(path.join(dir, 's.json'));
   await store.putDocument({ name: 'Statut SOSW', content: DOC, content_hash: sha256(DOC) });
   const sent = [];
@@ -172,4 +174,15 @@ test('klient LLM: ucięta odpowiedź (MAX_TOKENS) i pusty wynik to czytelne bł�
   await assert.rejects(cut.json({ system: '', user: '', instruction: '' }), /ucięta/);
   const empty = createJsonLlm({ env: { GEMINI_API_KEY: 'k' }, http: mk({ promptFeedback: { blockReason: 'SAFETY' } }), minIntervalMs: 0 });
   await assert.rejects(empty.json({ system: '', user: '', instruction: '' }), /SAFETY/);
+});
+
+test('runDrafts: przy auto=false szkic powstaje tylko na prośbę z panelu', async () => {
+  const { store, cfg, change } = await setup();
+  cfg.drafts = { ...cfg.drafts, auto: false };
+  await store.saveChange(change());
+  const none = await runDrafts({ store, llm: fakeLlm(goodResult), cfg });
+  assert.equal(none.created.length, 0);
+  await store.saveDraft({ change_key: change().key, document_name: 'Statut SOSW', status: 'requested' });
+  const asked = await runDrafts({ store, llm: fakeLlm(goodResult), cfg });
+  assert.equal(asked.created.length, 1);
 });

@@ -41,3 +41,16 @@ export function mergeConfig(base, override) {
   }
   return out;
 }
+
+/**
+ * Zmienna środowiskowa DRAFTS_AUTO (true/false) ma pierwszeństwo przed plikiem domyślnym i ustawieniami z panelu.
+ * Przy "false" szkice powstają wyłącznie na prośbę zgłoszoną w panelu.
+ */
+export function applyEnvOverrides(cfg, env = process.env) {
+  const v = String(env.DRAFTS_AUTO ?? '').trim().toLowerCase();
+  if (!v) return cfg;
+  const on = ['1', 'true', 'tak', 'yes'].includes(v);
+  const off = ['0', 'false', 'nie', 'no'].includes(v);
+  if (!on && !off) return cfg;
+  return { ...cfg, drafts: { ...(cfg.drafts ?? {}), auto: on } };
+}

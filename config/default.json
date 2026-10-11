@@ -312,7 +312,7 @@
     "sendWhenEmpty": true
   },
   "drafts": {
-    "auto": true,
+    "auto": false,
     "autoMinPriority": "mid",
     "skipStatuses": [
       "projekt",

@@ -6,7 +6,7 @@ import { createMailerFromEnv, createFileMailer } from './mail.js';
 import { createStore } from './store/index.js';
 import { runScan } from './pipeline.js';
 import { buildSources } from './sources/index.js';
-import { mergeConfig, validateConfig } from './config.js';
+import { mergeConfig, validateConfig, applyEnvOverrides } from './config.js';
 import { createJsonLlm } from './llm.js';
 import { runDrafts } from './drafts.js';
 
@@ -49,6 +49,7 @@ async function scan() {
     log(`UWAGA: nie udało się odczytać ustawień z panelu (${e.message}), używam domyślnych`);
   }
 
+  cfg = applyEnvOverrides(cfg);
   const llm = mockAi ? null : createJsonLlm({ http: realHttp });
   const result = await runScan({
     cfg, http, store, analyzer, mailer,
@@ -76,6 +77,7 @@ async function drafts() {
   let cfg = baseCfg;
   const override = await store.getConfig?.();
   if (override && !validateConfig(override).length) cfg = mergeConfig(baseCfg, override);
+  cfg = applyEnvOverrides(cfg);
   const llm = createJsonLlm({ http: realHttp });
   const r = await runDrafts({ store, llm, cfg, log });
   log(`Szkice: utworzono ${r.created.length}, błędów ${r.failed}, pominięto ${r.skipped}.`);
