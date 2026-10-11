@@ -26,6 +26,7 @@ jobs:
         run: node src/cli.js drafts
         env:
           AI_PROVIDER: ${{ vars.AI_PROVIDER }}
+          DRAFTS_AUTO: ${{ vars.DRAFTS_AUTO }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
